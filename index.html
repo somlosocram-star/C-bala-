@@ -392,6 +392,12 @@ body.light, html.pre-light body {
 .rk-fig { font-family: 'IBM Plex Mono', monospace; font-size: .56rem; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-left: auto; }
 .rk-pts { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; color: var(--text); min-width: 2.2em; text-align: right; }
 #r-rank { display: flex; flex-direction: column; gap: .5rem; width: 100%; max-width: 340px; }
+
+/* solución destacada al revelar la ronda (visible también en modo .multi) */
+.r-sol-label { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }
+.r-solution { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 2rem; letter-spacing: .35em; text-transform: uppercase; color: var(--verm); line-height: 1; margin-bottom: 1.3rem; }
+#reveal.multi .r-sol-label, #reveal.multi .r-solution { display: block; }
+.wait-veil .wv-fig.sol { color: var(--verm); letter-spacing: .3em; }
 </style>
 </head>
 <body>
@@ -524,7 +530,7 @@ body.light, html.pre-light body {
   <div class="kbd" id="kbd"></div>
   <div class="wait-veil" id="wait-veil">
     <div class="wv-fig mono" id="wv-fig">—</div>
-    <div class="wv-txt">enviada · esperando al resto<span class="dots"></span></div>
+    <div class="wv-txt"><span id="wv-lead">enviada · esperando al resto</span><span class="dots"></span></div>
   </div>
   <div class="btn-back-row"><button class="btn-secondary btn" id="btn-game-back">← menú</button></div>
 </div>
@@ -547,6 +553,8 @@ body.light, html.pre-light body {
 <!-- REVEAL por ronda (ranking entre jugadores) -->
 <div id="reveal">
   <div class="r-round" id="r-round">ronda 1</div>
+  <div class="r-sol-label" id="r-sol-label">la palabra era</div>
+  <div class="r-solution mono" id="r-solution">—</div>
   <div class="r-star">★</div>
   <div class="r-figure mono" id="r-figure"></div>
   <div class="r-dist" id="r-dist"></div>
@@ -994,7 +1002,7 @@ setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.
 const DB_URL = 'https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE = 'g/cabala/rooms';
 const SV = { '.sv': 'timestamp' };
-const GRACE_MS = 3500, HEARTBEAT_INTERVAL = 2000, HEARTBEAT_TIMEOUT = 6000, REVEAL_MS = 4200, ROUND_SECONDS = 180;
+const GRACE_MS = 3500, HEARTBEAT_INTERVAL = 2000, HEARTBEAT_TIMEOUT = 6000, REVEAL_MS = 5200, ROUND_SECONDS = 180;
 const COLORS = ['#9e2b22', '#4a8a7b', '#c9a44a', '#9c5fa0', '#a85a3d', '#5e8aa0', '#a87a4c', '#7a9050'];
 
 let online = false, amHost = false, roomCode = null, roomData = null, myName = '';
@@ -1188,7 +1196,16 @@ function submitOnline(solved, attempts) {
   if (mySubmitted) return;
   mySubmitted = true; G.locked = true; stopClock();
   const ms = Date.now() - roundStartMs;
-  $('wv-fig').textContent = solved ? ('resuelta · ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'no resuelta';
+  const fig = $('wv-fig');
+  if (solved) {
+    fig.classList.remove('sol');
+    fig.textContent = 'resuelta · ' + attempts + (attempts === 1 ? ' intento' : ' intentos');
+    $('wv-lead').textContent = 'enviada · esperando al resto';
+  } else {
+    fig.classList.add('sol');
+    fig.textContent = String(G.secret || '').toUpperCase();
+    $('wv-lead').textContent = 'la solución · esperando al resto';
+  }
   $('wait-veil').classList.add('on');
   fbSet(BASE + '/' + roomCode + '/subs/r' + G.round + '/' + myId, { solved: !!solved, attempts: attempts || 0, ms });
 }
@@ -1215,8 +1232,9 @@ function revealOnline(result) {
   $('wait-veil').classList.remove('on');
   const rv = $('reveal'); rv.classList.add('multi'); rv.classList.remove('diana');
   $('r-round').textContent = 'ronda ' + result.round;
-  $('r-figure').textContent = ''; $('r-dist').textContent = '';
-  $('r-best').textContent = 'la palabra era ' + String(result.secret || '').toUpperCase();
+  $('r-sol-label').textContent = 'la palabra era';
+  $('r-solution').textContent = String(result.secret || '').toUpperCase();
+  $('r-figure').textContent = ''; $('r-dist').textContent = ''; $('r-best').textContent = '';
   const rank = $('r-rank'); rank.innerHTML = '';
   result.ranking.forEach(r => {
     const row = document.createElement('div');
@@ -1318,7 +1336,7 @@ $('btn-online-home').addEventListener('click', leaveRoom);
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.4';
+  $('app-version').textContent = 'v0.5';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
