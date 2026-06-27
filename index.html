@@ -327,10 +327,13 @@ body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top
 .card .c-desc { font-family: 'IBM Plex Mono', monospace; font-size: .48rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .35rem; line-height: 1.3; }
 .app-version { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .25em; color: var(--muted); margin-top: 1.6rem; }
 
-/* sello de respaldo cuando aún no hay imagen (icono se genera aparte) */
-.seal-fallback { background: var(--accent); }
-.seal-fallback::after { content: 'C'; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-style: italic; color: var(--on-accent); font-size: 56%; }
-.splash-seal.seal-fallback::after { font-size: 5rem; }
+/* sello del juego: disco + anillo punteado girando + C en cursiva (se adapta al tema) */
+.cab-title { white-space: nowrap; }
+.seal-fallback { background: var(--accent); position: relative; }
+.seal-fallback::after { content: 'C'; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-style: italic; color: var(--on-accent); line-height: 1; }
+.seal.seal-fallback::after { font-size: 2.3rem; }
+.splash-seal.seal-fallback::after { font-size: 5.2rem; }
+.seal-fallback::before { content: ''; position: absolute; inset: 14%; border-radius: 50%; border: 1.5px dotted var(--on-accent); opacity: .5; animation: ringSpin 14s linear infinite; }
 
 /* demo de pistas dentro del tutorial */
 .tut-key { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: .9em; font-weight: 700; vertical-align: middle; margin: 0 .05em; }
@@ -355,12 +358,12 @@ body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top
   <button class="btn-secondary btn tut-close" id="tut-close">cerrar</button>
 </div>
 
-<div id="app-splash"><div class="splash-seal seal-fallback"><img src="cabala-seal.png" alt="" onerror="this.style.display='none'"></div></div>
+<div id="app-splash"><div class="splash-seal seal-fallback"></div></div>
 
 <!-- HOME -->
 <div id="screen-home" class="screen visible">
-  <div class="seal pulsing seal-fallback"><img src="cabala-seal.png" alt="" onerror="this.style.display='none'"></div>
-  <h1 class="title">Cá<span>bala</span></h1>
+  <div class="seal pulsing seal-fallback"></div>
+  <h1 class="title cab-title">Cábala</h1>
   <div class="subtitle">palabras</div>
   <div class="btn-row">
     <button class="btn" id="btn-play">Jugar</button>
@@ -416,7 +419,6 @@ body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top
 </div>
 
 <div id="toast"></div>
-<div id="ghost"></div>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -791,7 +793,7 @@ setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.1';
+  $('app-version').textContent = 'v0.2';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
