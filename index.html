@@ -385,6 +385,13 @@ body.light, html.pre-light body {
 .tile.sitio { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 9px var(--lift-cast); }
 .tile.presente { box-shadow: inset 0 1px 0 var(--lift-top), 0 2px 6px var(--lift-cast); }
 .tile.fuera { box-shadow: inset 0 2px 4px var(--lift-cast); }
+
+/* online: velo de espera anclado a la pantalla de juego, fila de ranking */
+#screen-game { position: relative; }
+#online-status { margin-bottom: .2rem; }
+.rk-fig { font-family: 'IBM Plex Mono', monospace; font-size: .56rem; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-left: auto; }
+.rk-pts { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; color: var(--text); min-width: 2.2em; text-align: right; }
+#r-rank { display: flex; flex-direction: column; gap: .5rem; width: 100%; max-width: 340px; }
 </style>
 </head>
 <body>
@@ -418,7 +425,7 @@ body.light, html.pre-light body {
   <div class="subtitle">palabras</div>
   <div class="btn-row">
     <button class="btn" id="btn-play">Jugar</button>
-    <button class="btn btn-soon" id="btn-online" disabled>Jugar online</button>
+    <button class="btn" id="btn-online">Jugar online</button>
     <button class="btn-secondary btn" id="install-btn">Instalar app</button>
   </div>
   <div class="app-version" id="app-version"></div>
@@ -443,16 +450,82 @@ body.light, html.pre-light body {
   <div class="btn-back-row"><button class="btn-secondary btn" id="btn-setup-back">← volver</button></div>
 </div>
 
+<!-- ONLINE menú -->
+<div id="screen-online" class="screen">
+  <div class="seal seal-fallback"></div>
+  <div class="subtitle">jugar online</div>
+  <div class="online-intro">Hasta 8 jugadores en la misma sala. Uno crea la sala y comparte el código; los demás se unen. Todos resuelven la <b>misma palabra</b> a la vez: gana quien la saca con menos intentos.</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-create">Crear sala</button>
+    <button class="btn" id="btn-join">Unirse a sala</button>
+  </div>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-online-back">← volver</button></div>
+</div>
+
+<!-- ONLINE crear -->
+<div id="screen-create" class="screen">
+  <div class="seal seal-fallback"></div>
+  <div class="subtitle">crear sala</div>
+  <div class="section-label">tu nombre</div>
+  <input id="create-name" class="name-input" type="text" maxlength="12" autocomplete="off" placeholder="nombre">
+  <button class="btn" id="btn-create-continue">Crear →</button>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-create-back">← volver</button></div>
+</div>
+
+<!-- ONLINE unirse -->
+<div id="screen-join" class="screen">
+  <div class="seal seal-fallback"></div>
+  <div class="subtitle">unirse a sala</div>
+  <div class="section-label">código de la sala</div>
+  <input id="join-code" class="code-input" type="text" inputmode="latin" maxlength="4" autocomplete="off" placeholder="ABCD">
+  <div class="section-label">tu nombre</div>
+  <input id="join-name" class="name-input" type="text" maxlength="12" autocomplete="off" placeholder="nombre">
+  <div class="join-error" id="join-error"></div>
+  <button class="btn" id="btn-join-continue">Entrar →</button>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-join-back">← volver</button></div>
+</div>
+
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen">
+  <div class="seal pulsing seal-fallback"></div>
+  <div class="room-code-label">código de la sala</div>
+  <div class="room-code mono" id="lobby-code">····</div>
+  <div class="section-label">jugadores</div>
+  <div class="lobby-players" id="lobby-players"></div>
+  <div id="host-actions" style="display:none">
+    <div class="section-label">carrera a</div>
+    <div class="cards" id="lobby-rounds">
+      <button class="card" data-rounds="3"><div class="c-roman">III</div><div class="c-name">3</div></button>
+      <button class="card selected" data-rounds="5"><div class="c-roman">V</div><div class="c-name">5</div></button>
+      <button class="card" data-rounds="10"><div class="c-roman">X</div><div class="c-name">10</div></button>
+    </div>
+    <button class="btn" id="btn-start-game">Empezar →</button>
+  </div>
+  <div id="guest-waiting" class="guest-waiting" style="display:none">esperando a que el anfitrión empiece<span class="dots"></span></div>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-lobby-leave">salir</button></div>
+</div>
+
 <!-- JUEGO -->
 <div id="screen-game" class="screen">
+  <div class="online-banner" id="online-banner" style="display:none"></div>
   <div class="g-mode-lab" id="g-mode-lab">clásico</div>
   <div class="g-head" id="g-head">
     <div class="chip"><div class="cv" id="st-try">1/6</div><div class="cl">intento</div></div>
     <div class="chip" id="chip-word" style="display:none"><div class="cv" id="st-word">1/10</div><div class="cl">palabra</div></div>
     <div class="chip" id="chip-score" style="display:none"><div class="cv" id="st-score">0</div><div class="cl">puntos</div></div>
   </div>
+  <div class="status-bar" id="online-status" style="display:none">
+    <div class="stat-chip"><div class="cv" id="o-round">1/5</div><div class="cl">ronda</div></div>
+    <div class="stat-chip"><div class="cv" id="o-try">1/6</div><div class="cl">intento</div></div>
+    <div class="stat-chip clock"><div class="cv" id="o-clock">180</div><div class="cl">segundos</div></div>
+  </div>
+  <div class="live-scores" id="live-scores"></div>
   <div class="board" id="board"></div>
   <div class="kbd" id="kbd"></div>
+  <div class="wait-veil" id="wait-veil">
+    <div class="wv-fig mono" id="wv-fig">—</div>
+    <div class="wv-txt">enviada · esperando al resto<span class="dots"></span></div>
+  </div>
   <div class="btn-back-row"><button class="btn-secondary btn" id="btn-game-back">← menú</button></div>
 </div>
 
@@ -470,6 +543,29 @@ body.light, html.pre-light body {
 </div>
 
 <div id="toast"></div>
+
+<!-- REVEAL por ronda (ranking entre jugadores) -->
+<div id="reveal">
+  <div class="r-round" id="r-round">ronda 1</div>
+  <div class="r-star">★</div>
+  <div class="r-figure mono" id="r-figure"></div>
+  <div class="r-dist" id="r-dist"></div>
+  <div class="r-best" id="r-best"></div>
+  <div id="r-rank"></div>
+</div>
+
+<!-- FINAL online (podio) -->
+<div id="final">
+  <div class="f-star">★</div>
+  <div class="f-label" id="f-label">fin de la partida</div>
+  <div class="f-figure" id="f-figure">—</div>
+  <div class="f-sub" id="f-sub"></div>
+  <div id="f-standings" style="display:flex;flex-direction:column;gap:.5rem;width:100%;max-width:340px;margin:1.4rem auto 0"></div>
+  <div class="e-btns" style="margin-top:1.6rem">
+    <button class="btn" id="btn-online-again">Revancha</button>
+    <button class="btn-secondary btn" id="btn-online-home">salir</button>
+  </div>
+</div>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -750,6 +846,11 @@ function buildQueue(n) {
   return pool.slice(0, n);
 }
 function updateChips() {
+  if (G.online) {
+    $('o-round').textContent = G.round + '/' + onlineTotal;
+    $('o-try').textContent = (G.row + 1) + '/' + ROWS;
+    return;
+  }
   $('st-try').textContent = (G.row + 1) + '/' + ROWS;
   if (G.mode === 'rondas') {
     $('st-word').textContent = Math.min(G.roundIdx + 1, G.totalRounds) + '/' + G.totalRounds;
@@ -766,6 +867,7 @@ function startCurrentWord() {
   loadWord(secret);
 }
 function afterGuess(win, attempts) {
+  if (G.online) { submitOnline(win, attempts); return; }
   if (G.mode === 'clasico') {
     updateStreak(win);
     showEndClasico(win, attempts);
@@ -810,6 +912,11 @@ function showEndRondas() {
 
 /* ===================== ARRANQUE DE MODOS ===================== */
 function startGame(mode, rounds) {
+  G.online = false;
+  $('online-banner').style.display = 'none'; $('online-status').style.display = 'none';
+  $('live-scores').style.display = 'none'; $('wait-veil').classList.remove('on');
+  $('g-head').style.display = ''; $('g-mode-lab').style.display = '';
+  stopClock();
   G.mode = mode; G.score = 0; G.solved = 0; G.roundIdx = 0;
   if (mode === 'rondas') {
     G.totalRounds = rounds; G.queue = buildQueue(rounds);
@@ -828,7 +935,7 @@ function startGame(mode, rounds) {
 /* ===================== CABLEADO UI ===================== */
 $('btn-play').addEventListener('click', () => show('screen-setup'));
 $('btn-setup-back').addEventListener('click', () => show('screen-home'));
-$('btn-game-back').addEventListener('click', () => { G.over = true; show('screen-home'); });
+$('btn-game-back').addEventListener('click', () => { if (G.online) { leaveRoom(); } else { G.over = true; show('screen-home'); } });
 $('btn-end-home').addEventListener('click', () => { hideEnd(); show('screen-home'); });
 $('btn-again').addEventListener('click', () => {
   hideEnd();
@@ -883,9 +990,335 @@ installBtn.addEventListener('click', async () => {
 });
 setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.add('show'); }, 2500);
 
+/* ===================== MULTIJUGADOR (Online Carrera · Firebase REST + polling) ===================== */
+const DB_URL = 'https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
+const BASE = 'g/cabala/rooms';
+const SV = { '.sv': 'timestamp' };
+const GRACE_MS = 3500, HEARTBEAT_INTERVAL = 2000, HEARTBEAT_TIMEOUT = 6000, REVEAL_MS = 4200, ROUND_SECONDS = 180;
+const COLORS = ['#9e2b22', '#4a8a7b', '#c9a44a', '#9c5fa0', '#a85a3d', '#5e8aa0', '#a87a4c', '#7a9050'];
+
+let online = false, amHost = false, roomCode = null, roomData = null, myName = '';
+let pollTimer = null, pollLast = null, hbTimer = null;
+let mySubmitted = false, lastRevealedRound = 0, hostRoundStartLocal = 0, roundStartMs = 0;
+let onlineTotal = 5;
+let myId = '';
+try { myId = localStorage.getItem('cabala_id') || ''; } catch (e) {}
+if (!myId) { myId = 'p' + Math.random().toString(36).slice(2, 10); try { localStorage.setItem('cabala_id', myId); } catch (e) {} }
+
+/* reloj de ronda */
+let clockTimer = null, clockLeft = 0;
+function startClock(secs) {
+  stopClock(); clockLeft = secs;
+  const el = $('o-clock'); el.textContent = clockLeft; el.classList.remove('warn');
+  clockTimer = setInterval(() => {
+    clockLeft--; el.textContent = Math.max(0, clockLeft);
+    if (clockLeft <= 20) el.classList.add('warn');
+    if (clockLeft <= 0) { stopClock(); onlineTimeUp(); }
+  }, 1000);
+}
+function stopClock() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
+
+/* REST */
+async function fbFetch(path, opts) {
+  try { const r = await fetch(DB_URL + '/' + path + '.json', Object.assign({ mode: 'cors' }, opts || {})); if (!r.ok) return null; return r.json(); }
+  catch (e) { return null; }
+}
+const fbGet = p => fbFetch(p);
+const fbSet = (p, v) => fbFetch(p, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v) });
+const fbUpd = (b, data) => Promise.all(Object.entries(data).map(([k, v]) =>
+  fbFetch(b + '/' + k, v === null ? { method: 'DELETE' } : { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v) })));
+const fbDel = p => fbFetch(p, { method: 'DELETE' });
+
+function startPoll() {
+  stopPoll();
+  const tick = () => {
+    fbGet(BASE + '/' + roomCode).then(data => {
+      const s = JSON.stringify(data);
+      if (s !== pollLast) { pollLast = s; roomData = data; handleRoom(); }
+      if (roomCode) pollTimer = setTimeout(tick, 400);
+    }).catch(() => { if (roomCode) pollTimer = setTimeout(tick, 400); });
+  };
+  tick();
+}
+function stopPoll() { clearTimeout(pollTimer); pollTimer = null; pollLast = null; }
+function startHeartbeat() {
+  stopHeartbeat();
+  const beat = () => { if (roomCode) fbSet(BASE + '/' + roomCode + '/players/' + myId + '/lastSeen', Date.now()); };
+  beat(); hbTimer = setInterval(beat, HEARTBEAT_INTERVAL);
+}
+function stopHeartbeat() { if (hbTimer) { clearInterval(hbTimer); hbTimer = null; } }
+function isConnected(p) { return p && p.lastSeen && (Date.now() - p.lastSeen < HEARTBEAT_TIMEOUT); }
+function connectedIds() { const pl = (roomData && roomData.players) || {}; return Object.keys(pl).filter(id => isConnected(pl[id])); }
+function currentHostId() {
+  const pl = (roomData && roomData.players) || {};
+  const arr = Object.keys(pl).filter(id => isConnected(pl[id])).map(id => ({ id, j: pl[id].joinedAt || 0 }));
+  if (!arr.length) return null;
+  arr.sort((a, b) => (a.j - b.j) || (a.id < b.id ? -1 : 1));
+  return arr[0].id;
+}
+function genCode() { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += L[Math.floor(Math.random() * L.length)]; return s; }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function pickSecretAvoid(prev) { let s; do { s = SECRETAS[Math.floor(Math.random() * SECRETAS.length)]; } while (SECRETAS.length > 1 && s === prev); return s; }
+
+async function createRoom() {
+  let code;
+  for (let i = 0; i < 6; i++) { code = genCode(); const ex = await fbGet(BASE + '/' + code); if (!ex) break; }
+  roomCode = code;
+  await fbSet(BASE + '/' + code, {
+    code, createdAt: SV, state: 'lobby', mode: { rounds: 5 }, currentRound: 0,
+    players: { [myId]: { name: myName, colorIdx: 0, score: 0, joinedAt: SV, lastSeen: Date.now() } }
+  });
+  enterLobby();
+}
+async function joinRoom(code) {
+  const data = await fbGet(BASE + '/' + code);
+  if (!data) { $('join-error').textContent = 'no existe esa sala'; return; }
+  if (data.state !== 'lobby') { $('join-error').textContent = 'la partida ya ha empezado'; return; }
+  const n = Object.keys(data.players || {}).length;
+  if (n >= 8) { $('join-error').textContent = 'la sala está llena (8)'; return; }
+  roomCode = code;
+  await fbUpd(BASE + '/' + code + '/players/' + myId, { name: myName, colorIdx: n, score: 0, joinedAt: SV, lastSeen: Date.now() });
+  enterLobby();
+}
+function enterLobby() {
+  online = true; G.online = false; G.round = 0; lastRevealedRound = 0; mySubmitted = false;
+  show('screen-lobby'); $('lobby-code').textContent = roomCode;
+  startHeartbeat(); startPoll();
+}
+function handleRoom() {
+  if (!roomData) { if (roomCode) { toast('sala cerrada'); leaveRoom(); } return; }
+  amHost = currentHostId() === myId;
+  if (roomData.state === 'lobby') {
+    if (!$('screen-lobby').classList.contains('visible')) {
+      G.round = 0; lastRevealedRound = 0; mySubmitted = false;
+      $('wait-veil').classList.remove('on'); $('final').classList.remove('visible'); $('reveal').classList.remove('visible');
+      show('screen-lobby'); $('lobby-code').textContent = roomCode;
+    }
+    $('host-actions').style.display = amHost ? 'block' : 'none';
+    $('guest-waiting').style.display = amHost ? 'none' : 'block';
+    syncRoundCardSelection();
+    renderLobbyPlayers();
+  }
+  if (roomData.state === 'playing') {
+    onlineTotal = (roomData.mode && roomData.mode.rounds) || 5;
+    if (roomData.round && roomData.round.n > (G.round || 0) && !$('reveal').classList.contains('visible')) enterOnlineRound(roomData.round);
+    if (roomData.result && roomData.result.round > lastRevealedRound) { lastRevealedRound = roomData.result.round; revealOnline(roomData.result); }
+    renderLiveScores();
+    if (amHost) hostTick();
+  }
+  if (roomData.state === 'ended') {
+    if (!$('final').classList.contains('visible')) endGameOnline();
+    if (amHost && roomData.rematchReq) rematchOnline();
+  }
+}
+function syncRoundCardSelection() {
+  const r = (roomData.mode && roomData.mode.rounds) || 5;
+  $('lobby-rounds').querySelectorAll('.card').forEach(c => c.classList.toggle('selected', parseInt(c.dataset.rounds, 10) === r));
+}
+function renderLobbyPlayers() {
+  const wrap = $('lobby-players'); wrap.innerHTML = '';
+  const pl = roomData.players || {}; const hostId = currentHostId();
+  Object.entries(pl).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)).forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'lobby-player' + (p.id === myId ? ' me' : '') + (isConnected(p) ? '' : ' disconnected');
+    el.style.setProperty('--p-color', COLORS[p.colorIdx % COLORS.length]);
+    el.innerHTML = '<span class="dot"></span><span class="nm">' + escapeHtml(p.name || '—') + '</span>' +
+      '<span class="tag">' + (p.id === hostId ? 'anfitrión' : (p.id === myId ? 'tú' : '')) + '</span>';
+    wrap.appendChild(el);
+  });
+}
+/* ranking olímpico de la ronda: menos intentos manda; desempate, quien antes */
+function rankCabala(entries) {
+  const N = entries.length;
+  const solvers = entries.filter(e => e.solved).sort((a, b) => (a.attempts - b.attempts) || (a.ms - b.ms));
+  const losers = entries.filter(e => !e.solved);
+  const out = [];
+  solvers.forEach((e, i) => out.push(Object.assign({}, e, { pos: i + 1, pts: N - (i + 1) + 1 })));
+  losers.forEach(e => out.push(Object.assign({}, e, { pos: 0, pts: 0 })));
+  return out;
+}
+/* ---- HOST ---- */
+function hostStartGame() {
+  if (!amHost) return;
+  hostRoundStartLocal = Date.now();
+  fbUpd(BASE + '/' + roomCode, { state: 'playing', currentRound: 1, result: null, subs: null, round: { n: 1, secret: pickSecretAvoid(''), startAt: SV } });
+}
+function hostTick() {
+  if (!roomData || roomData.state !== 'playing' || !roomData.round) return;
+  if (roomData.result && roomData.result.round === roomData.currentRound) return;
+  const n = roomData.currentRound;
+  const subs = (roomData.subs && roomData.subs['r' + n]) || {};
+  const conn = connectedIds();
+  const allIn = conn.length > 0 && conn.every(id => subs[id] !== undefined);
+  const deadline = hostRoundStartLocal + (ROUND_SECONDS * 1000) + GRACE_MS;
+  if (allIn || (hostRoundStartLocal && Date.now() > deadline)) hostResolveRound(n, subs);
+}
+function hostResolveRound(n, subs) {
+  const players = roomData.players || {};
+  const ids = Object.keys(players);
+  const entries = ids.map(id => { const s = subs[id]; return { id, solved: s ? !!s.solved : false, attempts: s ? (s.attempts || 0) : 0, ms: s ? (s.ms || 9e9) : 9e9 }; });
+  const ranked = rankCabala(entries);
+  const scoreUpd = {};
+  ranked.forEach(r => { scoreUpd['players/' + r.id + '/score'] = (players[r.id].score || 0) + r.pts; });
+  const ranking = ranked.map(r => ({ id: r.id, name: players[r.id].name, colorIdx: players[r.id].colorIdx, solved: r.solved, attempts: r.attempts, pos: r.pos, pts: r.pts }));
+  fbUpd(BASE + '/' + roomCode, Object.assign({ result: { round: n, secret: roomData.round.secret, ranking } }, scoreUpd));
+  setTimeout(() => { if (amHost) hostAdvance(n); }, REVEAL_MS + 200);
+}
+function hostAdvance(prevN) {
+  if (!amHost || !roomData) return;
+  if (prevN >= onlineTotal) { fbUpd(BASE + '/' + roomCode, { state: 'ended' }); return; }
+  hostRoundStartLocal = Date.now();
+  const prevSecret = (roomData.round && roomData.round.secret) || '';
+  fbUpd(BASE + '/' + roomCode, { currentRound: prevN + 1, result: null, round: { n: prevN + 1, secret: pickSecretAvoid(prevSecret), startAt: SV } });
+}
+/* ---- jugador ---- */
+function enterOnlineRound(rnd) {
+  G.online = true; G.round = rnd.n; mySubmitted = false; roundStartMs = Date.now();
+  $('g-head').style.display = 'none'; $('g-mode-lab').style.display = 'none';
+  $('online-banner').style.display = ''; $('online-status').style.display = 'flex';
+  $('reveal').classList.remove('visible'); $('wait-veil').classList.remove('on');
+  if (!$('screen-game').classList.contains('visible')) show('screen-game');
+  loadWord(rnd.secret);
+  G.online = true;
+  $('online-banner').textContent = 'sala ' + roomCode + ' · ' + connectedIds().length + ' jug.';
+  renderLiveScores();
+  startClock(ROUND_SECONDS);
+}
+function submitOnline(solved, attempts) {
+  if (mySubmitted) return;
+  mySubmitted = true; G.locked = true; stopClock();
+  const ms = Date.now() - roundStartMs;
+  $('wv-fig').textContent = solved ? ('resuelta · ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'no resuelta';
+  $('wait-veil').classList.add('on');
+  fbSet(BASE + '/' + roomCode + '/subs/r' + G.round + '/' + myId, { solved: !!solved, attempts: attempts || 0, ms });
+}
+function onlineTimeUp() { if (!mySubmitted) submitOnline(false, G.row); }
+function renderLiveScores() {
+  const wrap = $('live-scores');
+  if (!online || !roomData || !roomData.players) { wrap.style.display = 'none'; return; }
+  const arr = Object.entries(roomData.players).map(([id, p]) => Object.assign({ id }, p, { score: p.score || 0 }))
+    .sort((a, b) => (b.score - a.score) || ((a.joinedAt || 0) - (b.joinedAt || 0)));
+  const lead = arr.length ? arr[0].score : 0;
+  wrap.innerHTML = '';
+  arr.forEach(p => {
+    const c = document.createElement('div');
+    c.className = 'ls-chip' + (p.id === myId ? ' me' : '') + (p.score === lead && lead > 0 ? ' lead' : '') + (isConnected(p) ? '' : ' disconnected');
+    c.style.setProperty('--p-color', COLORS[p.colorIdx % COLORS.length]);
+    c.innerHTML = '<span class="ls-dot"></span><span class="ls-nm">' + escapeHtml(p.name || '—') + '</span><span class="ls-pts">' + p.score + '</span>';
+    wrap.appendChild(c);
+  });
+  wrap.classList.toggle('center', arr.length <= 4);
+  wrap.style.display = 'flex';
+}
+function revealOnline(result) {
+  mySubmitted = false; G.locked = true; stopClock();
+  $('wait-veil').classList.remove('on');
+  const rv = $('reveal'); rv.classList.add('multi'); rv.classList.remove('diana');
+  $('r-round').textContent = 'ronda ' + result.round;
+  $('r-figure').textContent = ''; $('r-dist').textContent = '';
+  $('r-best').textContent = 'la palabra era ' + String(result.secret || '').toUpperCase();
+  const rank = $('r-rank'); rank.innerHTML = '';
+  result.ranking.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'rk-row' + (r.id === myId ? ' me' : '') + (r.pos === 1 && r.solved ? ' win' : '');
+    row.style.setProperty('--p-color', COLORS[r.colorIdx % COLORS.length]);
+    const fig = r.solved ? (r.attempts + (r.attempts === 1 ? ' intento' : ' intentos')) : 'no resuelta';
+    row.innerHTML = '<span class="rk-pos">' + (r.solved ? r.pos : '–') + '</span><span class="rk-dot"></span>' +
+      '<span class="rk-nm">' + escapeHtml(r.name) + '</span>' +
+      '<span class="rk-fig mono">' + fig + '</span><span class="rk-pts mono">+' + r.pts + '</span>';
+    rank.appendChild(row);
+  });
+  rv.classList.add('visible');
+  const winners = result.ranking.filter(r => r.pos === 1 && r.solved);
+  setTimeout(() => sfx(winners.length ? 'diana' : 'bad'), 300);
+  setTimeout(() => rv.classList.remove('visible'), REVEAL_MS);
+}
+function endGameOnline() {
+  document.body.classList.remove('in-game'); stopClock(); playMenuMusic();
+  const pl = roomData.players || {};
+  const arr = Object.entries(pl).map(([id, p]) => Object.assign({ id }, p, { score: p.score || 0 })).sort((a, b) => b.score - a.score);
+  const top = arr.length ? arr[0].score : 0;
+  const tied = arr.filter(p => p.score === top && top > 0);
+  const isTie = tied.length > 1; const winner = arr[0];
+  $('f-label').textContent = 'fin de la partida';
+  if (isTie) { $('f-figure').textContent = 'Empate'; $('f-sub').innerHTML = '<b>' + top + '</b> puntos · ' + tied.map(p => escapeHtml(p.name)).join(' y '); }
+  else { $('f-figure').textContent = winner ? winner.name : '—'; $('f-sub').innerHTML = '<b>' + (winner ? winner.score : 0) + '</b> puntos'; }
+  const st = $('f-standings'); st.innerHTML = '';
+  arr.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'rk-row' + (p.id === myId ? ' me' : '') + ((p.score === top && top > 0) ? ' win' : '');
+    row.style.setProperty('--p-color', COLORS[p.colorIdx % COLORS.length]);
+    row.innerHTML = '<span class="rk-pos">' + (i + 1) + '</span><span class="rk-dot"></span><span class="rk-nm">' + escapeHtml(p.name) + '</span><span class="rk-pts mono">' + p.score + '</span>';
+    st.appendChild(row);
+  });
+  $('final').classList.add('visible');
+  setTimeout(() => sfx('diana'), 400);
+}
+function requestRematch() {
+  if (amHost) { rematchOnline(); return; }
+  $('btn-online-again').disabled = true; $('btn-online-again').textContent = 'pidiendo…';
+  fbSet(BASE + '/' + roomCode + '/rematchReq', myId);
+}
+function rematchOnline() {
+  if (!amHost) return;
+  const pl = roomData.players || {};
+  const upd = { state: 'lobby', currentRound: 0, result: null, round: null, subs: null, rematchReq: null };
+  Object.keys(pl).forEach(id => upd['players/' + id + '/score'] = 0);
+  $('final').classList.remove('visible'); $('btn-online-again').disabled = false; $('btn-online-again').textContent = 'Revancha';
+  fbUpd(BASE + '/' + roomCode, upd);
+}
+async function leaveRoom() {
+  stopPoll(); stopHeartbeat(); stopClock();
+  const code = roomCode, id = myId;
+  online = false; G.online = false; roomCode = null; roomData = null; amHost = false;
+  document.body.classList.remove('in-game');
+  $('final').classList.remove('visible'); $('reveal').classList.remove('visible'); $('wait-veil').classList.remove('on');
+  $('online-banner').style.display = 'none'; $('online-status').style.display = 'none'; $('live-scores').style.display = 'none';
+  $('g-head').style.display = ''; $('g-mode-lab').style.display = '';
+  $('btn-online-again').disabled = false; $('btn-online-again').textContent = 'Revancha';
+  if (code) {
+    await fbDel(BASE + '/' + code + '/players/' + id).catch(() => {});
+    const rest = await fbGet(BASE + '/' + code + '/players');
+    if (!rest) fbDel(BASE + '/' + code).catch(() => {});
+  }
+  show('screen-home');
+}
+window.addEventListener('beforeunload', () => { if (roomCode) { try { navigator.sendBeacon(DB_URL + '/' + BASE + '/' + roomCode + '/players/' + myId + '.json', JSON.stringify(null)); } catch (e) {} } });
+
+/* navegación online */
+$('btn-online').addEventListener('click', () => show('screen-online'));
+$('btn-online-back').addEventListener('click', () => show('screen-home'));
+$('btn-create').addEventListener('click', () => { $('create-name').value = myName || ''; show('screen-create'); });
+$('btn-create-back').addEventListener('click', () => show('screen-online'));
+$('btn-create-continue').addEventListener('click', () => {
+  const n = $('create-name').value.trim(); if (!n) { toast('escribe tu nombre'); return; }
+  if (!SECRETAS.length) { toast('aún cargando…'); return; }
+  myName = n; $('btn-create-continue').disabled = true;
+  createRoom().finally(() => { $('btn-create-continue').disabled = false; });
+});
+$('btn-join').addEventListener('click', () => { $('join-name').value = myName || ''; $('join-code').value = ''; $('join-error').textContent = ''; show('screen-join'); });
+$('btn-join-back').addEventListener('click', () => show('screen-online'));
+$('join-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); $('join-error').textContent = ''; });
+$('btn-join-continue').addEventListener('click', () => {
+  const code = $('join-code').value.trim().toUpperCase(); const n = $('join-name').value.trim();
+  if (code.length !== 4) { $('join-error').textContent = 'el código tiene 4 letras'; return; }
+  if (!n) { $('join-error').textContent = 'escribe tu nombre'; return; }
+  myName = n; $('btn-join-continue').disabled = true;
+  joinRoom(code).finally(() => { $('btn-join-continue').disabled = false; });
+});
+$('lobby-rounds').addEventListener('click', e => {
+  if (!amHost) return; const c = e.target.closest('.card'); if (!c) return;
+  $('lobby-rounds').querySelectorAll('.card').forEach(x => x.classList.remove('selected')); c.classList.add('selected');
+  fbSet(BASE + '/' + roomCode + '/mode/rounds', parseInt(c.dataset.rounds, 10));
+});
+$('btn-start-game').addEventListener('click', hostStartGame);
+$('btn-lobby-leave').addEventListener('click', leaveRoom);
+$('btn-online-again').addEventListener('click', requestRematch);
+$('btn-online-home').addEventListener('click', leaveRoom);
+
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.3';
+  $('app-version').textContent = 'v0.4';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
