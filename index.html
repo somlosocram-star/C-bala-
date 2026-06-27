@@ -254,8 +254,18 @@ body.light #final { background: radial-gradient(ellipse at center, rgba(220,190,
 </style>
 <style>
 /* ===================== CÁBALA — tablero, teclado, pistas ===================== */
-:root { --verm: #9e2b22; --verm-on: #ffffff; --key-top: #2a2a30; --key-bot: #191a1e; --key-edge: #070708; }
-body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top: #ffffff; --key-bot: #dad7cd; --key-edge: #b3afa3; }
+:root {
+  --verm: #9e2b22; --verm-on: #ffffff;
+  --key-top: #2a2a30; --key-bot: #191a1e; --key-edge: #070708;
+  --lift-top: rgba(255,255,255,.07); --lift-edge: rgba(0,0,0,.6); --lift-cast: rgba(0,0,0,.42);
+  --btn-top: #202024; --btn-bot: #141417; --tile-top: #1b1b20; --tile-bot: #131316;
+}
+body.light, html.pre-light body {
+  --verm: #9e2b22; --verm-on: #f6f2ef;
+  --key-top: #ffffff; --key-bot: #dad7cd; --key-edge: #b3afa3;
+  --lift-top: rgba(255,255,255,.9); --lift-edge: rgba(120,116,104,.45); --lift-cast: rgba(60,58,50,.16);
+  --btn-top: #ffffff; --btn-bot: #e6e5de; --tile-top: #ffffff; --tile-bot: #e9e8e1;
+}
 
 /* layout de la pantalla de juego */
 #screen-game { justify-content: flex-start; padding-top: max(3.4rem, calc(env(safe-area-inset-top) + 2.6rem)); gap: .6rem; }
@@ -340,9 +350,50 @@ body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top
 .tut-key.sitio { background: var(--verm); color: var(--verm-on); }
 .tut-key.presente { background: transparent; box-shadow: inset 0 0 0 2px var(--verm); color: var(--text); }
 .tut-key.fuera { background: var(--panel-2); color: var(--muted); }
+
+/* ===================== RELIEVE POR TEMA (botones / tarjetas / fichas) ===================== */
+/* botón principal: brillo superior, canto inferior y sombra proyectada; se hunde al pulsar */
+.btn {
+  background: linear-gradient(180deg, var(--btn-top), var(--btn-bot));
+  box-shadow: inset 0 1px 0 var(--lift-top), 0 2px 0 var(--lift-edge), 0 5px 14px var(--lift-cast);
+  transition: transform .08s, box-shadow .12s, background .2s, color .2s, border-color .2s;
+}
+.btn:not(:disabled):active { transform: translateY(2px); box-shadow: inset 0 2px 5px var(--lift-cast); }
+.btn:disabled { box-shadow: none; }
+
+/* botón secundario: relieve más leve */
+.btn-secondary {
+  background: linear-gradient(180deg, var(--btn-top), var(--btn-bot));
+  box-shadow: inset 0 1px 0 var(--lift-top), 0 1px 0 var(--lift-edge), 0 3px 9px var(--lift-cast);
+}
+.btn-secondary:not(:disabled):active { transform: translateY(1px); box-shadow: inset 0 1px 3px var(--lift-cast); }
+
+/* tarjetas de modo: brillo y sombra; mantienen el glow de selección del shell */
+.card { box-shadow: inset 0 1px 0 var(--lift-top), 0 2px 0 var(--lift-edge), 0 6px 16px var(--lift-cast); }
+.card:not(.selected):active { transform: translateY(1px); }
+
+/* teclas del teclado: alinear su brillo al token de tema */
+.key { box-shadow: 0 2px 0 var(--key-edge), inset 0 1px 0 var(--lift-top); }
+.key:active { box-shadow: 0 0 0 var(--key-edge), inset 0 2px 4px var(--lift-cast); }
+
+/* fichas del tablero: volumen en reposo, hundidas cuando están fuera */
+.tile {
+  background: linear-gradient(180deg, var(--tile-top), var(--tile-bot));
+  box-shadow: inset 0 1px 0 var(--lift-top), 0 2px 5px var(--lift-cast);
+}
+.tile.filled { box-shadow: inset 0 1px 0 var(--lift-top), 0 0 0 1.5px var(--accent), 0 3px 9px var(--lift-cast); }
+.tile.sitio { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 9px var(--lift-cast); }
+.tile.presente { box-shadow: inset 0 1px 0 var(--lift-top), 0 2px 6px var(--lift-cast); }
+.tile.fuera { box-shadow: inset 0 2px 4px var(--lift-cast); }
 </style>
 </head>
 <body>
+
+<audio id="m-menu" src="Arco_de_Cristal.mp3" loop preload="auto"></audio>
+<audio id="m-g1" src="La_llave_de_sal.mp3" preload="none"></audio>
+<audio id="m-g2" src="La_llave_de_sal__1_.mp3" preload="none"></audio>
+<audio id="m-g3" src="Teclas_de_Marmol.mp3" preload="none"></audio>
+<audio id="m-g4" src="Teclas_de_Marmol__1_.mp3" preload="none"></audio>
 
 <button id="theme-toggle" aria-label="Cambiar tema"><span class="knob"></span></button>
 <button id="sound-toggle" aria-label="Sonido"><span class="ic-on">♪</span><span class="ic-off">✕</span></button>
@@ -448,6 +499,42 @@ function sfx(kind) {
   else if (kind === 'diana') { tone(523, 0.16, 'triangle', 0.07); setTimeout(() => tone(659, 0.16, 'triangle', 0.07), 110); setTimeout(() => tone(988, 0.30, 'triangle', 0.06), 220); }
 }
 
+/* ===================== MÚSICA ===================== */
+const mMenu = $('m-menu');
+const gameTracks = [$('m-g1'), $('m-g2'), $('m-g3'), $('m-g4')];
+let curGame = -1;
+let kicked = false;
+mMenu.volume = 0.5;
+gameTracks.forEach(a => {
+  a.volume = 0.42;
+  a.addEventListener('ended', () => { if (!muted && document.body.classList.contains('in-game')) playGameMusic(); });
+});
+function stopMusic() { try { mMenu.pause(); } catch (e) {} gameTracks.forEach(a => { try { a.pause(); } catch (e) {} }); }
+function playMenuMusic() {
+  if (muted) return;
+  gameTracks.forEach(a => { try { a.pause(); } catch (e) {} });
+  if (!mMenu.paused) return;
+  Promise.resolve(mMenu.play()).catch(() => {});
+}
+function playGameMusic() {
+  if (muted) { stopMusic(); return; }
+  try { mMenu.pause(); } catch (e) {}
+  gameTracks.forEach(a => { try { a.pause(); } catch (e) {} });
+  let i;
+  do { i = Math.floor(Math.random() * gameTracks.length); }
+  while (gameTracks.length > 1 && i === curGame);
+  curGame = i;
+  const a = gameTracks[i];
+  try { a.currentTime = 0; } catch (e) {}
+  Promise.resolve(a.play()).catch(() => {});
+}
+function kickAudio() {
+  if (kicked || muted) return;
+  kicked = true;
+  if (document.body.classList.contains('in-game')) playGameMusic(); else playMenuMusic();
+}
+document.addEventListener('pointerdown', kickAudio, { once: true });
+
 /* ===================== NORMALIZACIÓN ===================== */
 function norm(s) {
   s = (s || '').toLowerCase();
@@ -471,7 +558,11 @@ themeToggle.addEventListener('click', () => applyTheme(!document.body.classList.
 const soundToggle = $('sound-toggle');
 function applyMute(m) { muted = m; soundToggle.classList.toggle('muted', m); try { localStorage.setItem('cabala_sound', m ? 'off' : 'on'); } catch (e) {} }
 applyMute(muted);
-soundToggle.addEventListener('click', () => { applyMute(!muted); if (!muted) sfx('place'); });
+soundToggle.addEventListener('click', () => {
+  applyMute(!muted);
+  if (muted) stopMusic();
+  else { sfx('place'); if (document.body.classList.contains('in-game')) playGameMusic(); else playMenuMusic(); }
+});
 
 $('help-btn').addEventListener('click', () => $('tutorial-overlay').classList.add('visible'));
 $('tut-close').addEventListener('click', () => $('tutorial-overlay').classList.remove('visible'));
@@ -485,6 +576,7 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
   $(id).classList.add('visible');
   document.body.classList.toggle('in-game', id === 'screen-game');
+  if (id === 'screen-game') playGameMusic(); else playMenuMusic();
 }
 
 /* ===================== DICCIONARIO ===================== */
@@ -793,7 +885,7 @@ setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.2';
+  $('app-version').textContent = 'v0.3';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
