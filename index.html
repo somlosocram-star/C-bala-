@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cábala">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Cábala — adivina la palabra oculta de cinco letras en seis intentos.">
+<title>Cábala · Palabras</title>
+
+<script>
+  (function () {
+    try { if (localStorage.getItem('cabala_theme') === 'light') document.documentElement.classList.add('pre-light'); } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,700;1,500;1,700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0b0c; --panel: #141416; --panel-2: #1b1b1f; --line: #2c2c30;
+  --text: #f4f4f2; --muted: #76767c; --accent: #f4f4f2; --amber: #d4a017;
+  --grain-opacity: 0.45; --vignette: rgba(0,0,0,0.5); --on-accent: #0b0b0c; --bad: #e06363;
+  --cube-top:#34343a; --cube-bot:#191a1e; --cube-edge:#070708; --cube-text:#f2efe8; --hole:#0e0e10; --hole-line:#33323a;
+}
+body.light, html.pre-light body {
+  --bg: #f3f2ee; --panel: #e7e6df; --panel-2: #eeede7; --line: #d2d0c6;
+  --text: #17171a; --muted: #8c8b81; --accent: #17171a; --amber: #b8860b;
+  --grain-opacity: 0.16; --vignette: rgba(60,58,50,0.10); --on-accent: #f3f2ee;
+  --cube-top:#ffffff; --cube-bot:#dad7cd; --cube-edge:#b3afa3; --cube-text:#1b1a17; --hole:#e2dfd6; --hole-line:#c4c0b4;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg); color: var(--text); font-family: 'Cormorant Garamond', serif;
+  background-image: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 62%), radial-gradient(ellipse 60% 80% at 50% 100%, rgba(255,255,255,0.03) 0%, transparent 62%);
+  background-attachment: fixed; position: relative; overscroll-behavior: none;
+  -webkit-user-select: none; user-select: none; transition: background-color 0.4s ease, color 0.4s ease;
+}
+body.light { background-image: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,0,0,0.04) 0%, transparent 62%), radial-gradient(ellipse 60% 80% at 50% 100%, rgba(0,0,0,0.03) 0%, transparent 62%); }
+body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); opacity: var(--grain-opacity); mix-blend-mode: overlay; }
+body::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse at center, transparent 52%, var(--vignette) 100%); }
+.mono { font-family: 'IBM Plex Mono', monospace; font-feature-settings: "tnum"; }
+
+#theme-toggle { position: fixed; top: max(1rem, env(safe-area-inset-top)); right: 1.2rem; z-index: 500; width: 56px; height: 30px; border-radius: 15px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; transition: background .3s, border-color .3s; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+#theme-toggle .knob { position: absolute; width: 24px; height: 24px; border-radius: 50%; left: 2px; background: radial-gradient(circle at 35% 30%, #ffffff, #cfcfcf 70%, #9a9a9a); box-shadow: 0 1px 4px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.5); transition: transform .3s cubic-bezier(.2,.9,.3,1); display: flex; align-items: center; justify-content: center; font-size: .7rem; line-height: 1; }
+#theme-toggle .knob::after { content: '☾'; color: #1a1a1a; }
+body.light #theme-toggle .knob { transform: translateX(26px); background: radial-gradient(circle at 35% 30%, #3a3a3a, #1a1a1a 70%, #000); }
+body.light #theme-toggle .knob::after { content: '☀'; color: #f3f2ee; }
+body.light #theme-toggle { border-color: var(--accent); }
+#sound-toggle { position: fixed; top: max(1rem, env(safe-area-inset-top)); right: 5.2rem; z-index: 500; width: 38px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; justify-content: center; font-size: .95rem; color: var(--text); transition: background .3s, border-color .3s, color .3s; }
+#sound-toggle.muted { color: var(--muted); }
+#sound-toggle .ic-on { display: inline; } #sound-toggle .ic-off { display: none; }
+#sound-toggle.muted .ic-on { display: none; } #sound-toggle.muted .ic-off { display: inline; }
+#help-btn { position: fixed; top: max(1rem, env(safe-area-inset-top)); left: 1.2rem; z-index: 500; width: 30px; height: 30px; border-radius: 50%; border: none; outline: none; cursor: pointer; background: var(--accent); color: var(--on-accent); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: transform .1s, background .3s, color .3s; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+#help-btn:active { transform: scale(0.9); }
+body.in-game #theme-toggle, body.in-game #sound-toggle, body.in-game #help-btn { opacity: .25; transition: opacity .3s; }
+body.in-game #theme-toggle:active, body.in-game #sound-toggle:active, body.in-game #help-btn:active { opacity: .9; }
+
+#app-splash { position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; align-items: center; justify-content: center; transition: opacity .6s ease; }
+html.pre-light #app-splash { background: #f3f2ee; }
+#app-splash.hiding { opacity: 0; pointer-events: none; }
+.splash-seal { width: 150px; height: 150px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; animation: sealMint 1.1s cubic-bezier(.2,.9,.3,1) both; overflow: hidden; }
+.splash-seal img { width: 100%; height: 100%; object-fit: contain; display: block; animation: glyphDrop .7s cubic-bezier(.3,1.4,.5,1) both; animation-delay: .3s; }
+body.light .splash-seal { box-shadow: none; }
+@keyframes sealMint { 0%{opacity:0; transform: scale(.3) rotateY(180deg);} 60%{opacity:1; transform: scale(1.08);} 100%{opacity:1; transform: scale(1);} }
+@keyframes glyphDrop { 0%{opacity:0; transform: translateY(-34px) scale(1.4);} 70%{opacity:1; transform: translateY(3px) scale(.96);} 100%{opacity:1; transform: translateY(0) scale(1);} }
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+
+.screen { display: none; position: fixed; inset: 0; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; z-index: 5; overflow-y: auto; }
+.screen.visible { display: flex; animation: screenIn .45s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes screenIn { 0%{opacity:0; transform: translateY(12px);} 100%{opacity:1; transform: translateY(0);} }
+.seal { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.4rem; position: relative; flex-shrink: 0; overflow: hidden; }
+.seal img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.seal.pulsing { animation: sealBreathe 3.4s ease-in-out infinite; }
+@keyframes sealBreathe { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.04); } }
+.title { font-size: clamp(2.4rem, 9vw, 4.2rem); font-weight: 500; font-style: italic; line-height: .92; letter-spacing: -.01em; margin-bottom: .2rem; }
+.title span { display: block; font-style: normal; font-weight: 700; letter-spacing: -.02em; }
+.subtitle { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; letter-spacing: .5em; color: var(--muted); margin: 1.1rem 0 2rem; text-transform: uppercase; display: flex; align-items: center; gap: .8rem; }
+.subtitle::before, .subtitle::after { content: '·'; font-size: 1.4rem; opacity: .6; }
+.btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 1rem 2rem; font-family: 'IBM Plex Mono', monospace; font-size: .75rem; letter-spacing: .35em; cursor: pointer; outline: none; text-transform: uppercase; transition: all .2s; min-width: 230px; }
+.btn:hover, .btn:active { background: var(--accent); color: var(--on-accent); }
+.btn:disabled { opacity: .35; cursor: default; }
+.btn:disabled:hover, .btn:disabled:active { background: transparent; color: var(--accent); }
+.btn-secondary { border-color: var(--line); color: var(--muted); font-size: .65rem; padding: .7rem 1.5rem; letter-spacing: .3em; min-width: 0; }
+.btn-secondary:hover, .btn-secondary:active { border-color: var(--text); color: var(--text); background: transparent; }
+.btn-soon { position: relative; }
+.btn-soon::after { content: 'pronto'; position: absolute; top: -.55rem; right: -.4rem; font-size: .42rem; letter-spacing: .2em; background: var(--muted); color: var(--bg); padding: .15rem .35rem; border-radius: 3px; }
+.btn-row { display: flex; flex-direction: column; gap: .8rem; align-items: center; }
+.btn-back-row { margin-top: 1.4rem; }
+.section-label { font-family: 'IBM Plex Mono', monospace; font-size: .58rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; margin-bottom: .7rem; }
+.online-intro { max-width: 300px; color: var(--muted); font-size: .95rem; line-height: 1.5; margin-bottom: 1.8rem; }
+
+.cards { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.6rem; }
+.card { width: 100px; background: linear-gradient(180deg, #2a2a30 0%, #1f1f24 100%); border: 1px solid #3a3a41; border-radius: 8px; cursor: pointer; outline: none; position: relative; display: flex; flex-direction: column; align-items: center; padding: .9rem .5rem; transition: all .2s ease; overflow: hidden; }
+body.light .card { background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 100%); border-color: var(--line); }
+.card::before { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .4; }
+.card:active, .card.selected { border-color: var(--accent); background: linear-gradient(180deg, #33333a 0%, #28282e 100%); box-shadow: 0 0 0 1px var(--accent) inset, 0 0 26px rgba(255,255,255,.07); }
+body.light .card.selected { background: linear-gradient(180deg, #fbfbf8 0%, #f3f2ec 100%); box-shadow: 0 0 0 1px var(--accent) inset, 0 0 26px rgba(0,0,0,.05); }
+.card .c-roman { font-style: italic; font-size: 1.8rem; font-weight: 500; line-height: 1; color: var(--text); }
+.card .c-name { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; color: var(--text); margin-top: .35rem; }
+
+/* online: nombre / código */
+.name-input, .code-input { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-family: 'IBM Plex Mono', monospace; text-align: center; outline: none; transition: border-color .2s; }
+.name-input { font-size: 1.1rem; letter-spacing: .05em; padding: .8rem 1rem; width: 260px; margin-bottom: 1.2rem; }
+.code-input { font-size: 2rem; letter-spacing: .4em; text-transform: uppercase; padding: .8rem .5rem .8rem .9em; width: 230px; margin-bottom: 1rem; }
+.name-input:focus, .code-input:focus { border-color: var(--accent); }
+.name-input::placeholder, .code-input::placeholder { color: var(--muted); opacity: .45; }
+.room-code-label { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .35em; color: var(--muted); text-transform: uppercase; margin-bottom: .7rem; }
+.room-code { font-family: 'IBM Plex Mono', monospace; font-size: 2.8rem; letter-spacing: .5em; font-weight: 600; color: var(--accent); padding: .55rem 0 .55rem .5em; border: 1px solid var(--accent); border-radius: 8px; min-width: 220px; box-shadow: inset 0 0 22px rgba(255,255,255,.06); margin-bottom: 1.3rem; }
+body.light .room-code { box-shadow: inset 0 0 22px rgba(0,0,0,.05); }
+.join-error { color: var(--bad); font-size: .8rem; min-height: 1.1em; margin: .3rem 0; letter-spacing: .02em; }
+
+/* lobby */
+.lobby-players { display: flex; flex-direction: column; gap: .5rem; width: 100%; max-width: 340px; margin: 0 auto 1.4rem; }
+.lobby-player { display: flex; align-items: center; gap: .7rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.lobby-player.me { border-color: var(--accent); }
+.lobby-player.disconnected { opacity: .4; }
+.lobby-player .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; background: var(--p-color, var(--muted)); }
+.lobby-player .nm { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; flex: 1; text-align: left; }
+.lobby-player .tag { font-family: 'IBM Plex Mono', monospace; font-size: .5rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.guest-waiting { color: var(--muted); font-size: .95rem; letter-spacing: .04em; }
+.dots::after { content: ''; animation: dots 1.4s steps(4) infinite; }
+@keyframes dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
+
+#screen-game { padding: 0; display: none; flex-direction: column; justify-content: flex-start; text-align: center; }
+#screen-game.visible { display: flex; }
+.online-banner { width: 100%; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); padding: .3rem 0 0; min-height: 1rem; }
+.game-head { flex: 0 0 auto; width: 100%; padding: max(.5rem, env(safe-area-inset-top)) 1rem .3rem; }
+.status-bar { display: flex; align-items: stretch; justify-content: center; gap: .5rem; max-width: 460px; margin: 0 auto; }
+.stat-chip { flex: 1 1 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .42rem .4rem; display: flex; flex-direction: column; align-items: center; gap: .12rem; }
+.stat-chip .cv { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.05rem; line-height: 1; }
+.stat-chip.clock .cv.warn { color: var(--bad); }
+.stat-chip .cl { font-family: 'IBM Plex Mono', monospace; font-size: .46rem; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+.live-scores { display: none; gap: .35rem; max-width: 460px; margin: .45rem auto 0; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+.live-scores::-webkit-scrollbar { display: none; }
+.live-scores.center { justify-content: center; }
+.ls-chip { flex: 0 0 auto; display: flex; align-items: center; gap: .32rem; padding: .26rem .55rem; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); transition: border-color .2s; }
+.ls-chip.me { border-color: var(--accent); }
+.ls-chip.lead { border-color: var(--amber); }
+.ls-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--p-color, var(--muted)); flex-shrink: 0; }
+.ls-nm { font-family: 'IBM Plex Mono', monospace; font-size: .54rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-pts { font-family: 'IBM Plex Mono', monospace; font-size: .82rem; font-weight: 700; color: var(--text); }
+.ls-chip.lead .ls-pts { color: var(--amber); }
+.target-wrap { margin: .7rem auto .25rem; position: relative; }
+#mode-toggle { position: absolute; right: .1rem; top: 50%; transform: translateY(-50%); width: 56px; height: 30px; border-radius: 15px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; outline: none; padding: 0; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+#mode-toggle .knob { position: absolute; width: 24px; height: 24px; border-radius: 50%; top: 2px; left: 2px; background: radial-gradient(circle at 35% 30%, #ffffff, #cfcfcf 70%, #9a9a9a); box-shadow: 0 1px 4px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.5); transition: transform .3s cubic-bezier(.2,.9,.3,1); transform: translateX(26px); }
+#mode-toggle.tap .knob { transform: translateX(0); }
+.mode-lab { position: absolute; right: 0; top: calc(50% + 20px); width: 58px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: .46rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.target-label { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .4em; color: var(--muted); text-transform: uppercase; }
+.target-num { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: clamp(2.4rem, 12vw, 3.6rem); line-height: 1; letter-spacing: .04em; }
+.board-wrap { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: .2rem .8rem; min-height: 0; gap: .8rem; position: relative; }
+.tiles { display: flex; flex-direction: column; gap: .6rem; align-items: center; }
+.cube-row { display: flex; gap: .6rem; justify-content: center; }
+.cube, .slot { width: 64px; height: 64px; border-radius: 13px; position: relative; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.4rem; user-select: none; -webkit-user-select: none; touch-action: none; }
+.cube { background: linear-gradient(158deg, var(--cube-top), var(--cube-bot)); color: var(--cube-text);
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.14), inset 0 -4px 6px rgba(0,0,0,.3), 0 5px 0 var(--cube-edge), 0 8px 11px rgba(0,0,0,.4);
+  cursor: grab; transition: transform .12s cubic-bezier(.2,.8,.3,1), box-shadow .12s; animation: settle .26s cubic-bezier(.25,1.4,.5,1) both; }
+.cube.op { font-size: 1.55rem; }
+.cube.res { box-shadow: inset 0 2px 1px rgba(255,255,255,.14), inset 0 -4px 6px rgba(0,0,0,.3), 0 5px 0 var(--cube-edge), 0 8px 11px rgba(0,0,0,.4), 0 0 0 1.5px var(--amber) inset; }
+.cube.diana { color: var(--amber); box-shadow: inset 0 2px 1px rgba(255,255,255,.14), inset 0 -4px 6px rgba(0,0,0,.3), 0 5px 0 var(--cube-edge), 0 8px 11px rgba(0,0,0,.4), 0 0 24px rgba(212,160,23,.55); }
+.slot { background: var(--hole); box-shadow: inset 0 5px 9px rgba(0,0,0,.5), inset 0 -1px 0 rgba(255,255,255,.04); border: 1.5px dashed var(--hole-line); color: var(--muted); font-size: 1.1rem; transition: box-shadow .15s, border-color .15s; }
+.slot.dropok { border-color: var(--amber); border-style: solid; box-shadow: inset 0 0 0 2px rgba(212,160,23,.5), inset 0 5px 9px rgba(0,0,0,.4); }
+.slot.filled { border: none; background: transparent; box-shadow: none; }
+
+.ops { display: flex; gap: .5rem; justify-content: center; align-items: center; }
+.op-clear { width: 54px; height: 50px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; font-weight: 700; letter-spacing: .05em; cursor: pointer; outline: none; display: flex; align-items: center; justify-content: center; }
+.op-clear:active { transform: scale(.94); }
+
+.build { display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 64px; }
+.build .bslot { width: 54px; height: 54px; font-size: 1.2rem; }
+.build .bslot.op { width: 48px; height: 48px; }
+.build .bslot.filled .cube { width: 54px; height: 54px; animation: none; }
+.build .bslot.op.filled .cube { width: 48px; height: 48px; }
+.build .eq { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; color: var(--muted); margin: 0 .05rem; }
+.build .bslot.bad { color: var(--bad); border-color: var(--bad); border-style: solid; font-size: 1.3rem; }
+
+#ghost { position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none; display: none; margin: 0 !important; will-change: transform; transition: none !important; animation: none !important;
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.16), inset 0 -4px 6px rgba(0,0,0,.32), 0 11px 0 var(--cube-edge), 0 20px 28px rgba(0,0,0,.55) !important; }
+@keyframes settle { 0%{transform:scale(.7);opacity:0;} 60%{transform:scale(1.07);} 100%{transform:scale(1);opacity:1;} }
+.best-line { font-family: 'IBM Plex Mono', monospace; font-size: .7rem; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; min-height: 1.1em; }
+.best-line b { color: var(--text); font-weight: 700; font-size: .95rem; }
+.best-line .diana { color: var(--amber); }
+.game-foot { flex: 0 0 auto; width: 100%; padding: .5rem 1rem max(.9rem, env(safe-area-inset-bottom)); display: flex; gap: .7rem; justify-content: center; }
+.game-foot .btn-secondary { min-width: 110px; text-align: center; }
+/* velo de espera (online, tras plantarse) */
+.wait-veil { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 80%, transparent); display: none; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; z-index: 4; }
+.wait-veil.on { display: flex; }
+.wait-veil .wv-fig { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 2.2rem; }
+.wait-veil .wv-txt { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); }
+
+#reveal { position: fixed; inset: 0; z-index: 620; background: color-mix(in srgb, var(--bg) 93%, transparent); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.2rem; }
+#reveal.visible { display: flex; animation: screenIn .45s ease both; }
+#reveal .r-round { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; letter-spacing: .5em; color: var(--muted); text-transform: uppercase; margin-bottom: 1rem; }
+#reveal .r-star { font-size: 3.2rem; color: var(--amber); line-height: 1; text-shadow: 0 0 30px rgba(212,160,23,.6); animation: starSpin 1.4s ease-out both; margin-bottom: .3rem; }
+#reveal:not(.diana) .r-star { display: none; }
+@keyframes starSpin { 0%{opacity:0; transform: rotate(-180deg) scale(.3);} 60%{opacity:1; transform: rotate(0) scale(1.2);} 100%{opacity:1; transform: rotate(0) scale(1);} }
+#reveal .r-figure { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: clamp(2.6rem,12vw,4rem); line-height: 1; }
+#reveal.diana .r-figure { color: var(--amber); }
+#reveal .r-dist { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.4rem; color: var(--text); margin-top: .5rem; }
+#reveal .r-best { font-family: 'IBM Plex Mono', monospace; font-size: .56rem; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; margin-top: .9rem; }
+/* ranking online */
+#r-rank { display: none; flex-direction: column; gap: .35rem; width: 100%; max-width: 360px; margin-top: 1rem; }
+#reveal.multi #r-rank { display: flex; }
+#reveal.multi .r-figure, #reveal.multi .r-dist, #reveal.multi .r-best, #reveal.multi .r-star { display: none; }
+.rk-row { display: flex; align-items: center; gap: .6rem; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.rk-row.me { border-color: var(--accent); }
+.rk-row.win { border-color: var(--amber); }
+.rk-pos { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: .8rem; width: 1.4em; color: var(--muted); }
+.rk-row.win .rk-pos { color: var(--amber); }
+.rk-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--p-color, var(--muted)); flex-shrink: 0; }
+.rk-nm { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; flex: 1; text-align: left; }
+.rk-fig { font-family: 'IBM Plex Mono', monospace; font-size: .9rem; }
+.rk-pts { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: .9rem; min-width: 2.4em; text-align: right; }
+
+#final { position: fixed; inset: 0; z-index: 700; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.4rem; background: radial-gradient(ellipse at center, rgba(40,28,5,0.96), var(--bg) 80%); overflow-y: auto; }
+body.light #final { background: radial-gradient(ellipse at center, rgba(220,190,120,0.35), var(--bg) 80%); }
+#final.visible { display: flex; animation: screenIn .5s ease both; }
+#final .f-star { font-size: 4rem; color: var(--amber); text-shadow: 0 0 30px rgba(212,160,23,.7); animation: starSpin 1.8s ease-out both; }
+#final .f-label { font-family: 'IBM Plex Mono', monospace; font-size: .65rem; letter-spacing: .55em; color: var(--amber); text-transform: uppercase; margin: 1rem 0 .3rem; }
+#final .f-figure { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(2.4rem,10vw,3.8rem); font-weight: 500; line-height: 1; background: linear-gradient(180deg, #f4d987 0%, #c8941f 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+#final .f-sub { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; letter-spacing: .25em; color: var(--muted); text-transform: uppercase; margin-top: .9rem; }
+#final .f-sub b { color: var(--text); font-weight: 700; }
+#final .f-stats { display: flex; gap: 1.4rem; margin: 1.6rem 0 .2rem; }
+#final.multi .f-stats { display: none; }
+#final .f-stat { display: flex; flex-direction: column; gap: .2rem; }
+#final .f-stat .v { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.8rem; }
+#final .f-stat .l { font-family: 'IBM Plex Mono', monospace; font-size: .5rem; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
+#f-standings { display: none; flex-direction: column; gap: .35rem; width: 100%; max-width: 340px; margin: 1.4rem 0 .4rem; }
+#final.multi #f-standings { display: flex; }
+.f-btns { margin-top: 1.6rem; display: flex; flex-direction: column; gap: .7rem; align-items: center; }
+
+#tutorial-overlay { position: fixed; inset: 0; z-index: 600; background: color-mix(in srgb, var(--bg) 97%, transparent); display: none; flex-direction: column; padding: 2rem 1.4rem 1.4rem; overflow-y: auto; }
+#tutorial-overlay.visible { display: flex; animation: screenIn .4s ease both; }
+#tutorial-overlay h2 { font-style: italic; font-size: clamp(2rem,7vw,2.8rem); font-weight: 500; text-align: center; margin-bottom: .2rem; }
+#tutorial-overlay .tut-sub { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; letter-spacing: .4em; color: var(--muted); text-align: center; text-transform: uppercase; margin-bottom: 1.8rem; }
+.tut-step { display: flex; gap: .9rem; align-items: flex-start; margin: 0 auto 1.2rem; max-width: 480px; width: 100%; }
+.tut-num { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: .8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.tut-text { font-size: 1.15rem; line-height: 1.45; text-align: left; }
+.tut-text b { font-weight: 700; border-bottom: 1px solid var(--muted); }
+.tut-close { align-self: center; margin: .8rem 0 1rem; }
+
+#toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 900; background: var(--panel); border: 1px solid var(--line); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: .7rem; letter-spacing: .05em; padding: .7rem 1.2rem; border-radius: 8px; opacity: 0; pointer-events: none; transition: all .3s; max-width: 80vw; text-align: center; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+<style>
+/* ===================== CÁBALA — tablero, teclado, pistas ===================== */
+:root { --verm: #9e2b22; --verm-on: #ffffff; --key-top: #2a2a30; --key-bot: #191a1e; --key-edge: #070708; }
+body.light, html.pre-light body { --verm: #9e2b22; --verm-on: #f6f2ef; --key-top: #ffffff; --key-bot: #dad7cd; --key-edge: #b3afa3; }
+
+/* layout de la pantalla de juego */
+#screen-game { justify-content: flex-start; padding-top: max(3.4rem, calc(env(safe-area-inset-top) + 2.6rem)); gap: .6rem; }
+.g-head { display: flex; gap: .9rem; justify-content: center; margin-bottom: .2rem; }
+.chip { display: flex; flex-direction: column; align-items: center; min-width: 56px; }
+.chip .cv { font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; font-weight: 500; line-height: 1; color: var(--text); }
+.chip .cl { font-family: 'IBM Plex Mono', monospace; font-size: .5rem; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
+.g-mode-lab { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-bottom: .3rem; }
+
+/* tablero 6 x 5 */
+.board { display: grid; grid-template-rows: repeat(6, 1fr); gap: .42rem; margin: .2rem auto .4rem; }
+.brow { display: grid; grid-template-columns: repeat(5, 1fr); gap: .42rem; }
+.brow.shake { animation: rowShake .5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes rowShake { 10%,90%{transform:translateX(-2px);} 20%,80%{transform:translateX(4px);} 30%,50%,70%{transform:translateX(-7px);} 40%,60%{transform:translateX(7px);} }
+
+.tile {
+  width: min(15.5vw, 58px); height: min(15.5vw, 58px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif; font-weight: 700;
+  font-size: min(8.4vw, 2rem); line-height: 1; text-transform: uppercase;
+  color: var(--text); background: var(--panel); border: 1.5px solid var(--line);
+  border-radius: 7px; transition: border-color .15s, transform .1s;
+}
+.tile.filled { border-color: var(--accent); animation: tilePop .12s ease; }
+@keyframes tilePop { 0%{transform:scale(.9);} 100%{transform:scale(1);} }
+
+/* revelado con giro, columna a columna */
+.tile.reveal { animation: tileFlip .5s ease forwards; }
+@keyframes tileFlip { 0%{transform:rotateX(0);} 50%{transform:rotateX(90deg);} 100%{transform:rotateX(0);} }
+
+/* pistas: sitio = relleno vermellón · presente = contorno · fuera = apagada */
+.tile.sitio    { background: var(--verm); border-color: var(--verm); color: var(--verm-on); }
+.tile.presente { background: transparent; border: 2.5px solid var(--verm); color: var(--text); }
+.tile.fuera    { background: var(--panel-2); border-color: var(--line); color: var(--muted); opacity: .5; }
+
+/* teclado */
+.kbd { display: flex; flex-direction: column; gap: .42rem; width: 100%; max-width: 420px; margin: .2rem auto 0; padding: 0 .2rem; }
+.krow { display: flex; gap: .34rem; justify-content: center; }
+.key {
+  flex: 1 1 0; min-width: 0; height: 50px; border: none; outline: none; cursor: pointer;
+  border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: .82rem; font-weight: 500;
+  text-transform: uppercase; color: var(--text);
+  background: linear-gradient(180deg, var(--key-top) 0%, var(--key-bot) 100%);
+  box-shadow: 0 2px 0 var(--key-edge), inset 0 1px 1px rgba(255,255,255,.12);
+  transition: transform .06s, box-shadow .06s, background .2s, color .2s;
+}
+.key:active { transform: translateY(2px); box-shadow: 0 0 0 var(--key-edge), inset 0 1px 2px rgba(0,0,0,.3); }
+.key.wide { flex: 1.5 1 0; font-size: .62rem; letter-spacing: .12em; }
+.key.sitio    { background: var(--verm); color: var(--verm-on); box-shadow: 0 2px 0 #5e1813; }
+.key.presente { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--verm); }
+.key.fuera    { background: var(--panel-2); color: var(--muted); box-shadow: 0 1px 0 var(--key-edge); opacity: .55; }
+
+/* fin de partida (reutiliza estética del shell) */
+#cab-end { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; background: var(--bg); }
+#cab-end.show { display: flex; animation: screenIn .45s cubic-bezier(.2,.8,.3,1) both; }
+.e-star { font-size: 2.4rem; color: var(--verm); margin-bottom: .4rem; }
+.e-label { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-bottom: .6rem; }
+.e-word { font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; letter-spacing: .35em; text-transform: uppercase; color: var(--text); margin-bottom: .2rem; }
+.e-sub { color: var(--muted); font-size: 1rem; margin-bottom: 1.4rem; max-width: 300px; }
+.e-stats { display: flex; gap: 1.6rem; justify-content: center; margin-bottom: 1.6rem; }
+.e-stat { display: flex; flex-direction: column; align-items: center; }
+.e-stat .v { font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; color: var(--text); }
+.e-stat .l { font-family: 'IBM Plex Mono', monospace; font-size: .52rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
+.e-btns { display: flex; flex-direction: column; gap: .8rem; align-items: center; }
+
+.credits { font-family: 'IBM Plex Mono', monospace; font-size: .5rem; letter-spacing: .08em; color: var(--muted); line-height: 1.6; margin-top: 1.4rem; max-width: 280px; }
+
+/* piezas de shell que Galera definía en su bloque propio */
+.card .c-desc { font-family: 'IBM Plex Mono', monospace; font-size: .48rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .35rem; line-height: 1.3; }
+.app-version { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .25em; color: var(--muted); margin-top: 1.6rem; }
+
+/* sello de respaldo cuando aún no hay imagen (icono se genera aparte) */
+.seal-fallback { background: var(--accent); }
+.seal-fallback::after { content: 'C'; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-style: italic; color: var(--on-accent); font-size: 56%; }
+.splash-seal.seal-fallback::after { font-size: 5rem; }
+
+/* demo de pistas dentro del tutorial */
+.tut-key { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: .9em; font-weight: 700; vertical-align: middle; margin: 0 .05em; }
+.tut-key.sitio { background: var(--verm); color: var(--verm-on); }
+.tut-key.presente { background: transparent; box-shadow: inset 0 0 0 2px var(--verm); color: var(--text); }
+.tut-key.fuera { background: var(--panel-2); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" aria-label="Cambiar tema"><span class="knob"></span></button>
+<button id="sound-toggle" aria-label="Sonido"><span class="ic-on">♪</span><span class="ic-off">✕</span></button>
+<button id="help-btn" aria-label="Cómo se juega">?</button>
+
+<div id="tutorial-overlay">
+  <h2>Cómo se juega</h2>
+  <div class="tut-sub">cábala · palabras</div>
+  <div class="tut-step"><div class="tut-num">1</div><div class="tut-text">Adivina la <b>palabra oculta de 5 letras</b> en <b>6 intentos</b>. Cada intento debe ser una palabra que exista.</div></div>
+  <div class="tut-step"><div class="tut-num">2</div><div class="tut-text">Al enviarla, cada letra se marca: <span class="tut-key sitio">A</span> en su sitio, <span class="tut-key presente">B</span> está pero en otro sitio, <span class="tut-key fuera">C</span> no está en la palabra.</div></div>
+  <div class="tut-step"><div class="tut-num">3</div><div class="tut-text">El <b>teclado</b> se va coloreando con lo que ya sabes. Tildes y mayúsculas dan igual; la <b>ñ</b> es una letra propia.</div></div>
+  <div class="tut-step"><div class="tut-num">★</div><div class="tut-text">En <b>Por rondas</b> encadenas 10, 15 o 20 palabras: cuantos menos intentos uses en cada una, más puntos.</div></div>
+  <button class="btn-secondary btn tut-close" id="tut-close">cerrar</button>
+</div>
+
+<div id="app-splash"><div class="splash-seal seal-fallback"><img src="cabala-seal.png" alt="" onerror="this.style.display='none'"></div></div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen visible">
+  <div class="seal pulsing seal-fallback"><img src="cabala-seal.png" alt="" onerror="this.style.display='none'"></div>
+  <h1 class="title">Cá<span>bala</span></h1>
+  <div class="subtitle">palabras</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-play">Jugar</button>
+    <button class="btn btn-soon" id="btn-online" disabled>Jugar online</button>
+    <button class="btn-secondary btn" id="install-btn">Instalar app</button>
+  </div>
+  <div class="app-version" id="app-version"></div>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen">
+  <div class="section-label">modo</div>
+  <div class="cards mode-cards" id="mode-cards">
+    <button class="card selected" data-mode="clasico"><div class="c-name">Clásico</div><div class="c-desc">una palabra y a por otra</div></button>
+    <button class="card" data-mode="rondas"><div class="c-name">Por rondas</div><div class="c-desc">encadena y puntúa</div></button>
+  </div>
+  <div id="rounds-wrap" style="display:none">
+    <div class="section-label">palabras</div>
+    <div class="cards" id="round-cards">
+      <button class="card selected" data-rounds="10"><div class="c-roman">X</div><div class="c-name">10</div></button>
+      <button class="card" data-rounds="15"><div class="c-roman">XV</div><div class="c-name">15</div></button>
+      <button class="card" data-rounds="20"><div class="c-roman">XX</div><div class="c-name">20</div></button>
+    </div>
+  </div>
+  <button class="btn" id="btn-start">Empezar →</button>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-setup-back">← volver</button></div>
+</div>
+
+<!-- JUEGO -->
+<div id="screen-game" class="screen">
+  <div class="g-mode-lab" id="g-mode-lab">clásico</div>
+  <div class="g-head" id="g-head">
+    <div class="chip"><div class="cv" id="st-try">1/6</div><div class="cl">intento</div></div>
+    <div class="chip" id="chip-word" style="display:none"><div class="cv" id="st-word">1/10</div><div class="cl">palabra</div></div>
+    <div class="chip" id="chip-score" style="display:none"><div class="cv" id="st-score">0</div><div class="cl">puntos</div></div>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="kbd" id="kbd"></div>
+  <div class="btn-back-row"><button class="btn-secondary btn" id="btn-game-back">← menú</button></div>
+</div>
+
+<!-- FIN -->
+<div id="cab-end">
+  <div class="e-star">★</div>
+  <div class="e-label" id="e-label">resuelta</div>
+  <div class="e-word mono" id="e-word">—</div>
+  <div class="e-sub" id="e-sub"></div>
+  <div class="e-stats" id="e-stats"></div>
+  <div class="e-btns">
+    <button class="btn" id="btn-again">Otra vez</button>
+    <button class="btn-secondary btn" id="btn-end-home">← menú</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="ghost"></div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+/* ===================== AUDIO ===================== */
+let muted = false;
+try { muted = localStorage.getItem('cabala_sound') === 'off'; } catch (e) {}
+let actx = null;
+function ac() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return actx; }
+function tone(freq, dur, type, vol) {
+  if (muted) return;
+  const c = ac(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.value = vol || 0.06;
+  o.connect(g); g.connect(c.destination);
+  const t = c.currentTime;
+  g.gain.setValueAtTime(g.gain.value, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur);
+}
+function sfx(kind) {
+  if (kind === 'place') tone(520, 0.08, 'triangle', 0.06);
+  else if (kind === 'back') tone(240, 0.09, 'sine', 0.05);
+  else if (kind === 'valid') tone(660, 0.11, 'triangle', 0.05);
+  else if (kind === 'bad') { tone(150, 0.16, 'sawtooth', 0.05); }
+  else if (kind === 'diana') { tone(523, 0.16, 'triangle', 0.07); setTimeout(() => tone(659, 0.16, 'triangle', 0.07), 110); setTimeout(() => tone(988, 0.30, 'triangle', 0.06), 220); }
+}
+
+/* ===================== NORMALIZACIÓN ===================== */
+function norm(s) {
+  s = (s || '').toLowerCase();
+  s = s.replace(/ñ/g, '\u0001');
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/\u0001/g, 'ñ');
+  return s;
+}
+
+/* ===================== TEMA / SONIDO / AYUDA ===================== */
+const themeToggle = $('theme-toggle');
+function applyTheme(light) {
+  document.body.classList.toggle('light', light);
+  document.documentElement.classList.remove('pre-light');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', light ? '#f3f2ee' : '#0b0b0c');
+  try { localStorage.setItem('cabala_theme', light ? 'light' : 'dark'); } catch (e) {}
+}
+applyTheme(document.documentElement.classList.contains('pre-light'));
+themeToggle.addEventListener('click', () => applyTheme(!document.body.classList.contains('light')));
+
+const soundToggle = $('sound-toggle');
+function applyMute(m) { muted = m; soundToggle.classList.toggle('muted', m); try { localStorage.setItem('cabala_sound', m ? 'off' : 'on'); } catch (e) {} }
+applyMute(muted);
+soundToggle.addEventListener('click', () => { applyMute(!muted); if (!muted) sfx('place'); });
+
+$('help-btn').addEventListener('click', () => $('tutorial-overlay').classList.add('visible'));
+$('tut-close').addEventListener('click', () => $('tutorial-overlay').classList.remove('visible'));
+
+/* ===================== TOAST ===================== */
+let toastT = null;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2000); }
+
+/* ===================== NAVEGACIÓN ===================== */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  $(id).classList.add('visible');
+  document.body.classList.toggle('in-game', id === 'screen-game');
+}
+
+/* ===================== DICCIONARIO ===================== */
+const DICT = new Set();
+let dictReady = false;
+async function loadDict() {
+  const res = await fetch('palabras.txt.gz');
+  if (!res.ok) throw new Error('no se pudo cargar el diccionario');
+  let text;
+  if ('DecompressionStream' in window) {
+    const ds = new DecompressionStream('gzip');
+    text = await new Response(res.body.pipeThrough(ds)).text();
+  } else {
+    const r2 = await fetch('palabras.txt'); text = await r2.text();
+  }
+  for (const line of text.split('\n')) {
+    const w = line.trim();
+    if (w.length < 3 || w.length > 9) continue;
+    DICT.add(w);
+  }
+  dictReady = true;
+}
+
+/* ===================== SECRETAS (lista curada) ===================== */
+let SECRETAS = [];
+async function loadSecretas() {
+  const res = await fetch('secretas.txt');
+  if (!res.ok) throw new Error('no se pudo cargar la lista de secretas');
+  const text = await res.text();
+  SECRETAS = text.split('\n').map(x => x.trim()).filter(x => x.length === 5);
+  if (!SECRETAS.length) throw new Error('lista de secretas vacía');
+}
+
+/* ===================== ESTADO DE JUEGO ===================== */
+const COLS = 5, ROWS = 6;
+const G = {
+  mode: 'clasico', totalRounds: 1, queue: [], roundIdx: 0,
+  score: 0, solved: 0, lastSecret: '',
+  secret: '', row: 0, col: 0, cur: '', keyState: {},
+  over: false, locked: false
+};
+let tiles = [];
+let keyEls = {};
+
+/* ===================== TABLERO Y TECLADO ===================== */
+function buildBoard() {
+  const b = $('board'); b.innerHTML = ''; tiles = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = document.createElement('div'); row.className = 'brow';
+    const tr = [];
+    for (let c = 0; c < COLS; c++) { const t = document.createElement('div'); t.className = 'tile'; row.appendChild(t); tr.push(t); }
+    b.appendChild(row); tiles.push(tr);
+  }
+}
+function clearBoard() {
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const t = tiles[r][c]; t.textContent = '';
+    t.className = 'tile';
+  }
+}
+function buildKbd() {
+  const k = $('kbd'); k.innerHTML = ''; keyEls = {};
+  const rows = [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'],
+    ['__enter', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '__back']
+  ];
+  rows.forEach(r => {
+    const kr = document.createElement('div'); kr.className = 'krow';
+    r.forEach(key => {
+      const btn = document.createElement('button');
+      if (key === '__enter') { btn.className = 'key wide'; btn.textContent = 'enviar'; btn.addEventListener('click', submit); }
+      else if (key === '__back') { btn.className = 'key wide'; btn.textContent = '⌫'; btn.addEventListener('click', backspace); }
+      else { btn.className = 'key'; btn.textContent = key; btn.addEventListener('click', () => typeLetter(key)); keyEls[key] = btn; }
+      kr.appendChild(btn);
+    });
+    k.appendChild(kr);
+  });
+}
+function clearKbd() {
+  G.keyState = {};
+  for (const ch in keyEls) keyEls[ch].classList.remove('sitio', 'presente', 'fuera');
+}
+
+/* ===================== ENTRADA ===================== */
+function gameVisible() { return $('screen-game').classList.contains('visible'); }
+function typeLetter(ch) {
+  if (G.locked || G.over || !gameVisible()) return;
+  if (G.col >= COLS) return;
+  const t = tiles[G.row][G.col];
+  t.textContent = ch; t.classList.add('filled');
+  G.cur += ch; G.col++; sfx('place');
+}
+function backspace() {
+  if (G.locked || G.over) return;
+  if (G.col <= 0) return;
+  G.col--;
+  const t = tiles[G.row][G.col];
+  t.textContent = ''; t.classList.remove('filled');
+  G.cur = G.cur.slice(0, -1); sfx('back');
+}
+function shakeRow() {
+  const row = tiles[G.row][0].parentNode;
+  row.classList.add('shake');
+  setTimeout(() => row.classList.remove('shake'), 520);
+}
+function submit() {
+  if (G.locked || G.over || !gameVisible()) return;
+  if (G.col < COLS) { shakeRow(); toast('5 letras'); return; }
+  const word = G.cur;
+  if (!DICT.has(word)) { shakeRow(); toast('no existe'); sfx('bad'); return; }
+  sfx('valid'); reveal(word);
+}
+
+/* ===================== EVALUACIÓN Y REVELADO ===================== */
+function evaluate(guess, secret) {
+  const res = new Array(COLS).fill('fuera');
+  const sec = secret.split('');
+  const used = new Array(COLS).fill(false);
+  for (let i = 0; i < COLS; i++) if (guess[i] === sec[i]) { res[i] = 'sitio'; used[i] = true; }
+  for (let i = 0; i < COLS; i++) {
+    if (res[i] === 'sitio') continue;
+    for (let j = 0; j < COLS; j++) {
+      if (!used[j] && guess[i] === sec[j]) { res[i] = 'presente'; used[j] = true; break; }
+    }
+  }
+  return res;
+}
+const RANK = { fuera: 0, presente: 1, sitio: 2 };
+function setKey(ch, state) {
+  const cur = G.keyState[ch];
+  if (cur && RANK[cur] >= RANK[state]) return;
+  G.keyState[ch] = state;
+  const k = keyEls[ch];
+  if (k) { k.classList.remove('sitio', 'presente', 'fuera'); k.classList.add(state); }
+}
+function reveal(word) {
+  const res = evaluate(word, G.secret);
+  G.locked = true;
+  for (let c = 0; c < COLS; c++) {
+    const t = tiles[G.row][c];
+    setTimeout(() => {
+      t.classList.add('reveal');
+      setTimeout(() => { t.classList.remove('filled'); t.classList.add(res[c]); }, 250);
+    }, c * 280);
+  }
+  const done = (COLS - 1) * 280 + 520;
+  const win = (word === G.secret);
+  setTimeout(() => {
+    for (let c = 0; c < COLS; c++) setKey(word[c], res[c]);
+    G.locked = false;
+    if (win) { sfx('diana'); afterGuess(true, G.row + 1); }
+    else {
+      G.row++;
+      if (G.row >= ROWS) afterGuess(false, ROWS);
+      else { G.col = 0; G.cur = ''; updateChips(); }
+    }
+  }, done);
+}
+
+/* ===================== FLUJO DE PARTIDA ===================== */
+function pickRandomSecret() {
+  let s;
+  do { s = SECRETAS[Math.floor(Math.random() * SECRETAS.length)]; }
+  while (SECRETAS.length > 1 && s === G.lastSecret);
+  G.lastSecret = s; return s;
+}
+function buildQueue(n) {
+  const pool = SECRETAS.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
+  return pool.slice(0, n);
+}
+function updateChips() {
+  $('st-try').textContent = (G.row + 1) + '/' + ROWS;
+  if (G.mode === 'rondas') {
+    $('st-word').textContent = Math.min(G.roundIdx + 1, G.totalRounds) + '/' + G.totalRounds;
+    $('st-score').textContent = G.score;
+  }
+}
+function loadWord(secret) {
+  G.secret = secret; G.row = 0; G.col = 0; G.cur = '';
+  G.over = false; G.locked = false;
+  clearBoard(); clearKbd(); updateChips();
+}
+function startCurrentWord() {
+  const secret = (G.mode === 'rondas') ? G.queue[G.roundIdx] : pickRandomSecret();
+  loadWord(secret);
+}
+function afterGuess(win, attempts) {
+  if (G.mode === 'clasico') {
+    updateStreak(win);
+    showEndClasico(win, attempts);
+  } else {
+    const pts = win ? Math.max(1, 7 - attempts) : 0;
+    G.score += pts;
+    if (win) G.solved++;
+    toast(win ? ('★ ' + G.secret.toUpperCase() + '   +' + pts) : ('era: ' + G.secret.toUpperCase()));
+    G.roundIdx++;
+    G.over = true;
+    updateChips();
+    if (G.roundIdx >= G.totalRounds) setTimeout(showEndRondas, 1500);
+    else setTimeout(startCurrentWord, 1500);
+  }
+}
+
+/* ===================== RACHA (clásico) ===================== */
+function getStreak() { try { return parseInt(localStorage.getItem('cabala_streak') || '0', 10) || 0; } catch (e) { return 0; } }
+function setStreak(v) { try { localStorage.setItem('cabala_streak', String(v)); } catch (e) {} }
+function updateStreak(win) { setStreak(win ? getStreak() + 1 : 0); }
+
+/* ===================== PANTALLA FINAL ===================== */
+function statHTML(v, l) { return '<div class="e-stat"><span class="v mono">' + v + '</span><span class="l">' + l + '</span></div>'; }
+function showEnd() { $('cab-end').classList.add('show'); }
+function hideEnd() { $('cab-end').classList.remove('show'); }
+function showEndClasico(win, attempts) {
+  G.over = true;
+  $('e-label').textContent = win ? 'resuelta' : 'fallada';
+  $('e-word').textContent = G.secret;
+  $('e-sub').textContent = win ? ('en ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'se acabaron los intentos';
+  $('e-stats').innerHTML = statHTML(getStreak(), 'racha');
+  showEnd();
+}
+function showEndRondas() {
+  G.over = true;
+  $('e-label').textContent = 'rondas completadas';
+  $('e-word').textContent = '★';
+  $('e-sub').textContent = G.solved + ' de ' + G.totalRounds + ' resueltas';
+  $('e-stats').innerHTML = statHTML(G.score, 'puntos') + statHTML(G.solved + '/' + G.totalRounds, 'aciertos');
+  showEnd();
+}
+
+/* ===================== ARRANQUE DE MODOS ===================== */
+function startGame(mode, rounds) {
+  G.mode = mode; G.score = 0; G.solved = 0; G.roundIdx = 0;
+  if (mode === 'rondas') {
+    G.totalRounds = rounds; G.queue = buildQueue(rounds);
+    $('chip-word').style.display = ''; $('chip-score').style.display = '';
+    $('g-mode-lab').textContent = 'por rondas · ' + rounds;
+  } else {
+    G.totalRounds = 1;
+    $('chip-word').style.display = 'none'; $('chip-score').style.display = 'none';
+    $('g-mode-lab').textContent = 'clásico';
+  }
+  hideEnd();
+  show('screen-game');
+  startCurrentWord();
+}
+
+/* ===================== CABLEADO UI ===================== */
+$('btn-play').addEventListener('click', () => show('screen-setup'));
+$('btn-setup-back').addEventListener('click', () => show('screen-home'));
+$('btn-game-back').addEventListener('click', () => { G.over = true; show('screen-home'); });
+$('btn-end-home').addEventListener('click', () => { hideEnd(); show('screen-home'); });
+$('btn-again').addEventListener('click', () => {
+  hideEnd();
+  if (G.mode === 'clasico') { startCurrentWord(); }
+  else { G.score = 0; G.solved = 0; G.roundIdx = 0; G.queue = buildQueue(G.totalRounds); startCurrentWord(); }
+});
+
+let selMode = 'clasico', selRounds = 10;
+$('mode-cards').querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', () => {
+    $('mode-cards').querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selMode = card.getAttribute('data-mode');
+    $('rounds-wrap').style.display = (selMode === 'rondas') ? '' : 'none';
+  });
+});
+$('round-cards').querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', () => {
+    $('round-cards').querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selRounds = parseInt(card.getAttribute('data-rounds'), 10);
+  });
+});
+$('btn-start').addEventListener('click', () => {
+  if (!SECRETAS.length) { toast('aún cargando…'); return; }
+  startGame(selMode, selRounds);
+});
+
+/* teclado físico */
+document.addEventListener('keydown', e => {
+  if (!gameVisible() || G.over || G.locked) return;
+  if (e.key === 'Enter') { submit(); return; }
+  if (e.key === 'Backspace') { backspace(); e.preventDefault(); return; }
+  const ch = norm(e.key);
+  if (ch.length === 1 && /[a-zñ]/.test(ch)) typeLetter(ch);
+});
+
+/* ===================== INSTALAR (PWA) ===================== */
+let deferredPrompt = null;
+const installBtn = $('install-btn');
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if (!isStandalone()) installBtn.classList.add('show'); });
+window.addEventListener('appinstalled', () => { installBtn.classList.remove('show'); deferredPrompt = null; });
+installBtn.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (e) {}
+    deferredPrompt = null; installBtn.classList.remove('show');
+  } else {
+    toast('Usa el menú del navegador → «Instalar app» / «Añadir a inicio»');
+  }
+});
+setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.add('show'); }, 2500);
+
+/* ===================== ARRANQUE ===================== */
+(async function boot() {
+  $('app-version').textContent = 'v0.1';
+  buildBoard(); buildKbd();
+  try { await Promise.all([loadDict(), loadSecretas()]); }
+  catch (e) { toast('Error cargando datos'); }
+  setTimeout(() => { const sp = $('app-splash'); if (sp) { sp.classList.add('hiding'); setTimeout(() => sp.remove(), 650); } }, 500);
+})();
+
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return;
+    refreshing = true; location.reload();
+  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

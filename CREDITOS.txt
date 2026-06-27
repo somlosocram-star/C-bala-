@@ -1,0 +1,5 @@
+Cábala — Socram Games
+Diccionario: RLA-ES (corrector ortográfico de español), bajo licencia MPL.
+  Mantener atribución a RLA-ES / sbosio en los créditos del juego.
+  (Pega aquí el texto de atribución completo que tienes en tu otro proyecto.)
+Fuentes: Cormorant Garamond + IBM Plex Mono (SIL Open Font License).
