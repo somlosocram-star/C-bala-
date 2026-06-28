@@ -398,6 +398,9 @@ body.light, html.pre-light body {
 .r-solution { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 2rem; letter-spacing: .35em; text-transform: uppercase; color: var(--verm); line-height: 1; margin-bottom: 1.3rem; }
 #reveal.multi .r-sol-label, #reveal.multi .r-solution { display: block; }
 .wait-veil .wv-fig.sol { color: var(--verm); letter-spacing: .3em; }
+.wait-veil .wv-timer { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; color: var(--text); margin: .4rem 0 .2rem; letter-spacing: .08em; }
+.wait-veil .wv-timer.warn { color: var(--verm); }
+.cv.warn { color: var(--verm); }
 </style>
 </head>
 <body>
@@ -519,6 +522,7 @@ body.light, html.pre-light body {
     <div class="chip"><div class="cv" id="st-try">1/6</div><div class="cl">intento</div></div>
     <div class="chip" id="chip-word" style="display:none"><div class="cv" id="st-word">1/10</div><div class="cl">palabra</div></div>
     <div class="chip" id="chip-score" style="display:none"><div class="cv" id="st-score">0</div><div class="cl">puntos</div></div>
+    <div class="chip" id="chip-clock" style="display:none"><div class="cv" id="st-clock">150</div><div class="cl">segundos</div></div>
   </div>
   <div class="status-bar" id="online-status" style="display:none">
     <div class="stat-chip"><div class="cv" id="o-round">1/5</div><div class="cl">ronda</div></div>
@@ -530,6 +534,7 @@ body.light, html.pre-light body {
   <div class="kbd" id="kbd"></div>
   <div class="wait-veil" id="wait-veil">
     <div class="wv-fig mono" id="wv-fig">—</div>
+    <div class="wv-timer mono" id="wv-timer"></div>
     <div class="wv-txt"><span id="wv-lead">enviada · esperando al resto</span><span class="dots"></span></div>
   </div>
   <div class="btn-back-row"><button class="btn-secondary btn" id="btn-game-back">← menú</button></div>
@@ -873,6 +878,13 @@ function loadWord(secret) {
 function startCurrentWord() {
   const secret = (G.mode === 'rondas') ? G.queue[G.roundIdx] : pickRandomSecret();
   loadWord(secret);
+  if (G.mode === 'rondas') startClock(ROUND_SECONDS, [$('st-clock')], soliTimeUp);
+  else stopClock();
+}
+function soliTimeUp() {
+  if (G.online || G.over || G.mode !== 'rondas') return;
+  G.locked = true;
+  afterGuess(false, G.row);
 }
 function afterGuess(win, attempts) {
   if (G.online) { submitOnline(win, attempts); return; }
@@ -880,7 +892,8 @@ function afterGuess(win, attempts) {
     updateStreak(win);
     showEndClasico(win, attempts);
   } else {
-    const pts = win ? Math.max(1, 7 - attempts) : 0;
+    stopClock();
+    const pts = win ? (7 - attempts) + timeBonus(clockRemaining()) : 0;
     G.score += pts;
     if (win) G.solved++;
     toast(win ? ('★ ' + G.secret.toUpperCase() + '   +' + pts) : ('era: ' + G.secret.toUpperCase()));
@@ -896,6 +909,8 @@ function afterGuess(win, attempts) {
 function getStreak() { try { return parseInt(localStorage.getItem('cabala_streak') || '0', 10) || 0; } catch (e) { return 0; } }
 function setStreak(v) { try { localStorage.setItem('cabala_streak', String(v)); } catch (e) {} }
 function updateStreak(win) { setStreak(win ? getStreak() + 1 : 0); }
+function getRecord(n) { try { return parseInt(localStorage.getItem('cabala_rec_' + n) || '0', 10) || 0; } catch (e) { return 0; } }
+function setRecord(n, v) { try { localStorage.setItem('cabala_rec_' + n, String(v)); } catch (e) {} }
 
 /* ===================== PANTALLA FINAL ===================== */
 function statHTML(v, l) { return '<div class="e-stat"><span class="v mono">' + v + '</span><span class="l">' + l + '</span></div>'; }
@@ -910,11 +925,14 @@ function showEndClasico(win, attempts) {
   showEnd();
 }
 function showEndRondas() {
-  G.over = true;
-  $('e-label').textContent = 'rondas completadas';
+  G.over = true; stopClock();
+  const rec = getRecord(G.totalRounds);
+  const isNew = G.score > rec;
+  if (isNew) setRecord(G.totalRounds, G.score);
+  $('e-label').textContent = isNew ? '¡nuevo récord!' : 'rondas completadas';
   $('e-word').textContent = '★';
   $('e-sub').textContent = G.solved + ' de ' + G.totalRounds + ' resueltas';
-  $('e-stats').innerHTML = statHTML(G.score, 'puntos') + statHTML(G.solved + '/' + G.totalRounds, 'aciertos');
+  $('e-stats').innerHTML = statHTML(G.score, 'puntos') + statHTML(Math.max(rec, G.score), 'récord');
   showEnd();
 }
 
@@ -928,11 +946,11 @@ function startGame(mode, rounds) {
   G.mode = mode; G.score = 0; G.solved = 0; G.roundIdx = 0;
   if (mode === 'rondas') {
     G.totalRounds = rounds; G.queue = buildQueue(rounds);
-    $('chip-word').style.display = ''; $('chip-score').style.display = '';
+    $('chip-word').style.display = ''; $('chip-score').style.display = ''; $('chip-clock').style.display = '';
     $('g-mode-lab').textContent = 'por rondas · ' + rounds;
   } else {
     G.totalRounds = 1;
-    $('chip-word').style.display = 'none'; $('chip-score').style.display = 'none';
+    $('chip-word').style.display = 'none'; $('chip-score').style.display = 'none'; $('chip-clock').style.display = 'none';
     $('g-mode-lab').textContent = 'clásico';
   }
   hideEnd();
@@ -943,7 +961,7 @@ function startGame(mode, rounds) {
 /* ===================== CABLEADO UI ===================== */
 $('btn-play').addEventListener('click', () => show('screen-setup'));
 $('btn-setup-back').addEventListener('click', () => show('screen-home'));
-$('btn-game-back').addEventListener('click', () => { if (G.online) { leaveRoom(); } else { G.over = true; show('screen-home'); } });
+$('btn-game-back').addEventListener('click', () => { if (G.online) { leaveRoom(); } else { G.over = true; stopClock(); show('screen-home'); } });
 $('btn-end-home').addEventListener('click', () => { hideEnd(); show('screen-home'); });
 $('btn-again').addEventListener('click', () => {
   hideEnd();
@@ -1002,7 +1020,7 @@ setTimeout(() => { if (!deferredPrompt && !isStandalone()) installBtn.classList.
 const DB_URL = 'https://subasta-de-tiempo-default-rtdb.europe-west1.firebasedatabase.app';
 const BASE = 'g/cabala/rooms';
 const SV = { '.sv': 'timestamp' };
-const GRACE_MS = 3500, HEARTBEAT_INTERVAL = 2000, HEARTBEAT_TIMEOUT = 6000, REVEAL_MS = 5200, ROUND_SECONDS = 180;
+const GRACE_MS = 3500, HEARTBEAT_INTERVAL = 2000, HEARTBEAT_TIMEOUT = 6000, REVEAL_MS = 5200, ROUND_SECONDS = 150;
 const COLORS = ['#9e2b22', '#4a8a7b', '#c9a44a', '#9c5fa0', '#a85a3d', '#5e8aa0', '#a87a4c', '#7a9050'];
 
 let online = false, amHost = false, roomCode = null, roomData = null, myName = '';
@@ -1013,18 +1031,38 @@ let myId = '';
 try { myId = localStorage.getItem('cabala_id') || ''; } catch (e) {}
 if (!myId) { myId = 'p' + Math.random().toString(36).slice(2, 10); try { localStorage.setItem('cabala_id', myId); } catch (e) {} }
 
-/* reloj de ronda */
-let clockTimer = null, clockLeft = 0;
-function startClock(secs) {
-  stopClock(); clockLeft = secs;
-  const el = $('o-clock'); el.textContent = clockLeft; el.classList.remove('warn');
+/* reloj de palabra/ronda (genérico: online y solitario por rondas) */
+let clockTimer = null, clockLeft = 0, clockEls = [], clockOnZero = null;
+function paintClock() {
+  const v = Math.max(0, clockLeft);
+  clockEls.forEach(el => { if (!el) return; el.textContent = v; el.classList.toggle('warn', clockLeft <= 20); });
+}
+function startClock(secs, els, onZero) {
+  stopClock();
+  clockLeft = secs; clockEls = els || []; clockOnZero = onZero || null;
+  paintClock();
   clockTimer = setInterval(() => {
-    clockLeft--; el.textContent = Math.max(0, clockLeft);
-    if (clockLeft <= 20) el.classList.add('warn');
-    if (clockLeft <= 0) { stopClock(); onlineTimeUp(); }
+    clockLeft--; paintClock();
+    if (clockLeft <= 0) { stopClock(); if (clockOnZero) clockOnZero(); }
   }, 1000);
 }
 function stopClock() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
+function clockRemaining() { return Math.max(0, clockLeft); }
+function timeBonus(remSeconds) { if (remSeconds >= 100) return 3; if (remSeconds >= 50) return 2; return 1; }
+
+/* temporizador del velo de espera (cuenta lo que queda de la ronda online) */
+let waitTimer = null;
+function startWaitTimer() {
+  stopWaitTimer();
+  const paint = () => {
+    const rem = Math.max(0, ROUND_SECONDS - Math.floor((Date.now() - roundStartMs) / 1000));
+    const el = $('wv-timer');
+    if (rem > 0) { el.textContent = rem + ' s'; el.classList.toggle('warn', rem <= 20); }
+    else { el.textContent = 'resolviendo…'; el.classList.remove('warn'); }
+  };
+  paint(); waitTimer = setInterval(paint, 500);
+}
+function stopWaitTimer() { if (waitTimer) { clearInterval(waitTimer); waitTimer = null; } }
 
 /* REST */
 async function fbFetch(path, opts) {
@@ -1136,13 +1174,15 @@ function renderLobbyPlayers() {
   });
 }
 /* ranking olímpico de la ronda: menos intentos manda; desempate, quien antes */
+function roundPoints(solved, attempts, ms) {
+  if (!solved) return 0;
+  const rem = ROUND_SECONDS - (ms / 1000);
+  return (7 - attempts) + timeBonus(rem);
+}
 function rankCabala(entries) {
-  const N = entries.length;
-  const solvers = entries.filter(e => e.solved).sort((a, b) => (a.attempts - b.attempts) || (a.ms - b.ms));
-  const losers = entries.filter(e => !e.solved);
-  const out = [];
-  solvers.forEach((e, i) => out.push(Object.assign({}, e, { pos: i + 1, pts: N - (i + 1) + 1 })));
-  losers.forEach(e => out.push(Object.assign({}, e, { pos: 0, pts: 0 })));
+  const out = entries.map(e => Object.assign({}, e, { pts: roundPoints(e.solved, e.attempts, e.ms) }));
+  out.sort((a, b) => (b.pts - a.pts) || (a.attempts - b.attempts) || (a.ms - b.ms) || ((a.solved === b.solved) ? 0 : (a.solved ? -1 : 1)));
+  out.forEach((e, i) => { e.pos = e.solved ? i + 1 : 0; });
   return out;
 }
 /* ---- HOST ---- */
@@ -1190,7 +1230,8 @@ function enterOnlineRound(rnd) {
   G.online = true;
   $('online-banner').textContent = 'sala ' + roomCode + ' · ' + connectedIds().length + ' jug.';
   renderLiveScores();
-  startClock(ROUND_SECONDS);
+  stopWaitTimer();
+  startClock(ROUND_SECONDS, [$('o-clock')], onlineTimeUp);
 }
 function submitOnline(solved, attempts) {
   if (mySubmitted) return;
@@ -1207,6 +1248,7 @@ function submitOnline(solved, attempts) {
     $('wv-lead').textContent = 'la solución · esperando al resto';
   }
   $('wait-veil').classList.add('on');
+  startWaitTimer();
   fbSet(BASE + '/' + roomCode + '/subs/r' + G.round + '/' + myId, { solved: !!solved, attempts: attempts || 0, ms });
 }
 function onlineTimeUp() { if (!mySubmitted) submitOnline(false, G.row); }
@@ -1228,7 +1270,7 @@ function renderLiveScores() {
   wrap.style.display = 'flex';
 }
 function revealOnline(result) {
-  mySubmitted = false; G.locked = true; stopClock();
+  mySubmitted = false; G.locked = true; stopClock(); stopWaitTimer();
   $('wait-veil').classList.remove('on');
   const rv = $('reveal'); rv.classList.add('multi'); rv.classList.remove('diana');
   $('r-round').textContent = 'ronda ' + result.round;
@@ -1286,7 +1328,7 @@ function rematchOnline() {
   fbUpd(BASE + '/' + roomCode, upd);
 }
 async function leaveRoom() {
-  stopPoll(); stopHeartbeat(); stopClock();
+  stopPoll(); stopHeartbeat(); stopClock(); stopWaitTimer();
   const code = roomCode, id = myId;
   online = false; G.online = false; roomCode = null; roomData = null; amHost = false;
   document.body.classList.remove('in-game');
@@ -1336,7 +1378,7 @@ $('btn-online-home').addEventListener('click', leaveRoom);
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.5';
+  $('app-version').textContent = 'v0.6';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
