@@ -896,12 +896,17 @@ function afterGuess(win, attempts) {
     const pts = win ? (7 - attempts) + timeBonus(clockRemaining()) : 0;
     G.score += pts;
     if (win) G.solved++;
-    toast(win ? ('★ ' + G.secret.toUpperCase() + '   +' + pts) : ('era: ' + G.secret.toUpperCase()));
     G.roundIdx++;
     G.over = true;
     updateChips();
-    if (G.roundIdx >= G.totalRounds) setTimeout(showEndRondas, 1500);
-    else setTimeout(startCurrentWord, 1500);
+    const last = G.roundIdx >= G.totalRounds;
+    if (win) {
+      toast('★ ' + G.secret.toUpperCase() + '   +' + pts);
+      setTimeout(last ? showEndRondas : startCurrentWord, 1500);
+    } else {
+      showSoliFail(G.secret);
+      setTimeout(last ? showEndRondas : () => { hideSoliFail(); startCurrentWord(); }, 2800);
+    }
   }
 }
 
@@ -911,6 +916,13 @@ function setStreak(v) { try { localStorage.setItem('cabala_streak', String(v)); 
 function updateStreak(win) { setStreak(win ? getStreak() + 1 : 0); }
 function getRecord(n) { try { return parseInt(localStorage.getItem('cabala_rec_' + n) || '0', 10) || 0; } catch (e) { return 0; } }
 function setRecord(n, v) { try { localStorage.setItem('cabala_rec_' + n, String(v)); } catch (e) {} }
+function showSoliFail(secret) {
+  const fig = $('wv-fig'); fig.classList.add('sol'); fig.textContent = String(secret).toUpperCase();
+  $('wv-timer').textContent = '';
+  $('wv-lead').textContent = 'no la sacaste · siguiente palabra';
+  $('wait-veil').classList.add('on');
+}
+function hideSoliFail() { $('wait-veil').classList.remove('on'); }
 
 /* ===================== PANTALLA FINAL ===================== */
 function statHTML(v, l) { return '<div class="e-stat"><span class="v mono">' + v + '</span><span class="l">' + l + '</span></div>'; }
@@ -918,14 +930,14 @@ function showEnd() { $('cab-end').classList.add('show'); }
 function hideEnd() { $('cab-end').classList.remove('show'); }
 function showEndClasico(win, attempts) {
   G.over = true;
-  $('e-label').textContent = win ? 'resuelta' : 'fallada';
+  $('e-label').textContent = win ? 'resuelta' : 'la palabra era';
   $('e-word').textContent = G.secret;
-  $('e-sub').textContent = win ? ('en ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'se acabaron los intentos';
+  $('e-sub').textContent = win ? ('en ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'no la sacaste';
   $('e-stats').innerHTML = statHTML(getStreak(), 'racha');
   showEnd();
 }
 function showEndRondas() {
-  G.over = true; stopClock();
+  G.over = true; stopClock(); $('wait-veil').classList.remove('on');
   const rec = getRecord(G.totalRounds);
   const isNew = G.score > rec;
   if (isNew) setRecord(G.totalRounds, G.score);
@@ -1378,7 +1390,7 @@ $('btn-online-home').addEventListener('click', leaveRoom);
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.6';
+  $('app-version').textContent = 'v0.7';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
