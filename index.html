@@ -847,16 +847,23 @@ function reveal(word) {
 }
 
 /* ===================== FLUJO DE PARTIDA ===================== */
+const RECENT_MAX = 80;
+function getRecent() { try { const a = JSON.parse(localStorage.getItem('cabala_recent') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function pushRecent(w) { try { let a = getRecent().filter(x => x !== w); a.push(w); if (a.length > RECENT_MAX) a = a.slice(-RECENT_MAX); localStorage.setItem('cabala_recent', JSON.stringify(a)); } catch (e) {} }
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
 function pickRandomSecret() {
-  let s;
-  do { s = SECRETAS[Math.floor(Math.random() * SECRETAS.length)]; }
-  while (SECRETAS.length > 1 && s === G.lastSecret);
+  const recent = new Set(getRecent());
+  let pool = SECRETAS.filter(w => !recent.has(w) && w !== G.lastSecret);
+  if (!pool.length) pool = SECRETAS.filter(w => w !== G.lastSecret);
+  if (!pool.length) pool = SECRETAS.slice();
+  const s = pool[Math.floor(Math.random() * pool.length)];
   G.lastSecret = s; return s;
 }
 function buildQueue(n) {
-  const pool = SECRETAS.slice();
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
-  return pool.slice(0, n);
+  const recent = new Set(getRecent());
+  const fresh = shuffle(SECRETAS.filter(w => !recent.has(w)));
+  const rest = shuffle(SECRETAS.filter(w => recent.has(w)));
+  return fresh.concat(rest).slice(0, n);
 }
 function updateChips() {
   if (G.online) {
@@ -873,6 +880,7 @@ function updateChips() {
 function loadWord(secret) {
   G.secret = secret; G.row = 0; G.col = 0; G.cur = '';
   G.over = false; G.locked = false;
+  pushRecent(secret);
   clearBoard(); clearKbd(); updateChips();
 }
 function startCurrentWord() {
@@ -1116,7 +1124,13 @@ function currentHostId() {
 }
 function genCode() { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += L[Math.floor(Math.random() * L.length)]; return s; }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function pickSecretAvoid(prev) { let s; do { s = SECRETAS[Math.floor(Math.random() * SECRETAS.length)]; } while (SECRETAS.length > 1 && s === prev); return s; }
+function pickSecretAvoid(prev) {
+  const recent = new Set(getRecent());
+  let pool = SECRETAS.filter(w => !recent.has(w) && w !== prev);
+  if (!pool.length) pool = SECRETAS.filter(w => w !== prev);
+  if (!pool.length) pool = SECRETAS.slice();
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 async function createRoom() {
   let code;
@@ -1390,7 +1404,7 @@ $('btn-online-home').addEventListener('click', leaveRoom);
 
 /* ===================== ARRANQUE ===================== */
 (async function boot() {
-  $('app-version').textContent = 'v0.7';
+  $('app-version').textContent = 'v0.9';
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
