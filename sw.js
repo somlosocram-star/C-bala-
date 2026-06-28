@@ -1,5 +1,5 @@
 /* Service worker de Cábala — HTML siempre fresco; assets, diccionario y secretas en caché */
-const CACHE = 'cabala-v0_9';
+const CACHE = 'cabala-v0_10';
 
 const SHELL = [
   './',

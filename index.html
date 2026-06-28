@@ -337,13 +337,10 @@ body.light, html.pre-light body {
 .card .c-desc { font-family: 'IBM Plex Mono', monospace; font-size: .48rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .35rem; line-height: 1.3; }
 .app-version { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; letter-spacing: .25em; color: var(--muted); margin-top: 1.6rem; }
 
-/* sello del juego: disco + anillo punteado girando + C en cursiva (se adapta al tema) */
+/* sello del juego: emblema SVG (Árbol de la Vida), se adapta al tema */
 .cab-title { white-space: nowrap; }
-.seal-fallback { background: var(--accent); position: relative; }
-.seal-fallback::after { content: 'C'; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-style: italic; color: var(--on-accent); line-height: 1; }
-.seal.seal-fallback::after { font-size: 2.3rem; }
-.splash-seal.seal-fallback::after { font-size: 5.2rem; }
-.seal-fallback::before { content: ''; position: absolute; inset: 14%; border-radius: 50%; border: 1.5px dotted var(--on-accent); opacity: .5; animation: ringSpin 14s linear infinite; }
+.seal-fallback { background: var(--accent); }
+.seal .seal-svg, .splash-seal .seal-svg { width: 100%; height: 100%; display: block; }
 
 /* demo de pistas dentro del tutorial */
 .tut-key { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: .9em; font-weight: 700; vertical-align: middle; margin: 0 .05em; }
@@ -401,6 +398,37 @@ body.light, html.pre-light body {
 .wait-veil .wv-timer { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; color: var(--text); margin: .4rem 0 .2rem; letter-spacing: .08em; }
 .wait-veil .wv-timer.warn { color: var(--verm); }
 .cv.warn { color: var(--verm); }
+
+/* ===================== MEJORAS VISUALES ===================== */
+/* 1 · profundidad de fondo: gradiente sutil + grano */
+body::before { content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(125% 75% at 50% -8%, rgba(158,43,34,.07), transparent 58%),
+    radial-gradient(110% 110% at 50% 118%, rgba(0,0,0,.55), transparent 72%); }
+body.light::before {
+  background:
+    radial-gradient(125% 75% at 50% -8%, rgba(158,43,34,.05), transparent 58%),
+    radial-gradient(110% 110% at 50% 118%, rgba(120,116,104,.20), transparent 72%); }
+body::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px; }
+body.light::after { opacity: .05; }
+
+/* 2 · animaciones: ola de victoria, pop de tecla */
+@keyframes tileBounce { 0%,100% { transform: translateY(0); } 38% { transform: translateY(-17px); } 62% { transform: translateY(-4px); } }
+.tile.bounce { animation: tileBounce .55s ease; }
+@keyframes keyPop { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(-2px) scale(1.13); } 100% { transform: translateY(0) scale(1); } }
+.key.just { animation: keyPop .26s ease; }
+
+/* 5 · revelado letra a letra + entrada escalonada de rankings */
+@keyframes letterIn { 0% { opacity: 0; transform: translateY(9px) scale(.88); } 100% { opacity: 1; transform: none; } }
+.lt { display: inline-block; animation: letterIn .42s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes rowIn { 0% { opacity: 0; transform: translateY(11px); } 100% { opacity: 1; transform: none; } }
+#r-rank .rk-row, #f-standings .rk-row { animation: rowIn .45s cubic-bezier(.2,.8,.3,1) both; }
+
+/* 4 · tipografía: cifras tabulares (no bailan marcadores/reloj) */
+.cv, .ls-pts, .rk-pts, .rk-pos, .r-solution, .e-word, .e-stat .v, .room-code { font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
+.subtitle { letter-spacing: .42em; }
 </style>
 </head>
 <body>
@@ -820,7 +848,25 @@ function setKey(ch, state) {
   if (cur && RANK[cur] >= RANK[state]) return;
   G.keyState[ch] = state;
   const k = keyEls[ch];
-  if (k) { k.classList.remove('sitio', 'presente', 'fuera'); k.classList.add(state); }
+  if (k) {
+    k.classList.remove('sitio', 'presente', 'fuera'); k.classList.add(state);
+    k.classList.add('just'); setTimeout(() => k.classList.remove('just'), 260);
+  }
+}
+function victoryWave(row) {
+  for (let c = 0; c < COLS; c++) {
+    const t = tiles[row][c];
+    setTimeout(() => { t.classList.add('bounce'); setTimeout(() => t.classList.remove('bounce'), 600); }, c * 85);
+  }
+}
+function setLetters(el, text) {
+  el.innerHTML = '';
+  const s = String(text);
+  for (let i = 0; i < s.length; i++) {
+    const sp = document.createElement('span');
+    sp.className = 'lt'; sp.textContent = s[i]; sp.style.animationDelay = (i * 0.06) + 's';
+    el.appendChild(sp);
+  }
 }
 function reveal(word) {
   const res = evaluate(word, G.secret);
@@ -836,9 +882,12 @@ function reveal(word) {
   const win = (word === G.secret);
   setTimeout(() => {
     for (let c = 0; c < COLS; c++) setKey(word[c], res[c]);
-    G.locked = false;
-    if (win) { sfx('diana'); afterGuess(true, G.row + 1); }
-    else {
+    if (win) {
+      sfx('diana'); victoryWave(G.row);
+      const r = G.row;
+      setTimeout(() => afterGuess(true, r + 1), 740);
+    } else {
+      G.locked = false;
       G.row++;
       if (G.row >= ROWS) afterGuess(false, ROWS);
       else { G.col = 0; G.cur = ''; updateChips(); }
@@ -939,7 +988,7 @@ function hideEnd() { $('cab-end').classList.remove('show'); }
 function showEndClasico(win, attempts) {
   G.over = true;
   $('e-label').textContent = win ? 'resuelta' : 'la palabra era';
-  $('e-word').textContent = G.secret;
+  setLetters($('e-word'), G.secret);
   $('e-sub').textContent = win ? ('en ' + attempts + (attempts === 1 ? ' intento' : ' intentos')) : 'no la sacaste';
   $('e-stats').innerHTML = statHTML(getStreak(), 'racha');
   showEnd();
@@ -1301,13 +1350,14 @@ function revealOnline(result) {
   const rv = $('reveal'); rv.classList.add('multi'); rv.classList.remove('diana');
   $('r-round').textContent = 'ronda ' + result.round;
   $('r-sol-label').textContent = 'la palabra era';
-  $('r-solution').textContent = String(result.secret || '').toUpperCase();
+  setLetters($('r-solution'), String(result.secret || '').toUpperCase());
   $('r-figure').textContent = ''; $('r-dist').textContent = ''; $('r-best').textContent = '';
   const rank = $('r-rank'); rank.innerHTML = '';
-  result.ranking.forEach(r => {
+  result.ranking.forEach((r, i) => {
     const row = document.createElement('div');
     row.className = 'rk-row' + (r.id === myId ? ' me' : '') + (r.pos === 1 && r.solved ? ' win' : '');
     row.style.setProperty('--p-color', COLORS[r.colorIdx % COLORS.length]);
+    row.style.animationDelay = (0.25 + i * 0.08) + 's';
     const fig = r.solved ? (r.attempts + (r.attempts === 1 ? ' intento' : ' intentos')) : 'no resuelta';
     row.innerHTML = '<span class="rk-pos">' + (r.solved ? r.pos : '–') + '</span><span class="rk-dot"></span>' +
       '<span class="rk-nm">' + escapeHtml(r.name) + '</span>' +
@@ -1334,6 +1384,7 @@ function endGameOnline() {
     const row = document.createElement('div');
     row.className = 'rk-row' + (p.id === myId ? ' me' : '') + ((p.score === top && top > 0) ? ' win' : '');
     row.style.setProperty('--p-color', COLORS[p.colorIdx % COLORS.length]);
+    row.style.animationDelay = (0.2 + i * 0.09) + 's';
     row.innerHTML = '<span class="rk-pos">' + (i + 1) + '</span><span class="rk-dot"></span><span class="rk-nm">' + escapeHtml(p.name) + '</span><span class="rk-pts mono">' + p.score + '</span>';
     st.appendChild(row);
   });
@@ -1403,8 +1454,11 @@ $('btn-online-again').addEventListener('click', requestRematch);
 $('btn-online-home').addEventListener('click', leaveRoom);
 
 /* ===================== ARRANQUE ===================== */
+const SEAL_SVG = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="seal-svg"><circle cx="50" cy="50" r="49" fill="var(--accent)"/><circle cx="50" cy="50" r="45" fill="none" stroke="var(--on-accent)" stroke-width="1" stroke-dasharray="0.4 3.6" stroke-linecap="round" opacity=".55"/><path d="M50 14 L71 27 M50 14 L29 27 M50 14 L50 49 M71 27 L29 27 M71 27 L71 45 M71 27 L50 49 M29 27 L29 45 M29 27 L50 49 M71 45 L29 45 M71 45 L50 49 M71 45 L71 63 M29 45 L50 49 M29 45 L29 63 M50 49 L71 63 M50 49 L29 63 M50 49 L50 67 M71 63 L29 63 M71 63 L50 67 M71 63 L50 85 M29 63 L50 67 M29 63 L50 85 M50 67 L50 85" fill="none" stroke="var(--on-accent)" stroke-width="1.1" stroke-linejoin="round" opacity=".85"/><g fill="var(--on-accent)"><circle cx="50" cy="14" r="2.3"/><circle cx="71" cy="27" r="2.3"/><circle cx="29" cy="27" r="2.3"/><circle cx="71" cy="45" r="2.3"/><circle cx="29" cy="45" r="2.3"/><circle cx="71" cy="63" r="2.3"/><circle cx="29" cy="63" r="2.3"/><circle cx="50" cy="67" r="2.3"/><circle cx="50" cy="85" r="2.3"/></g><circle cx="50" cy="49" r="3.1" fill="var(--verm)"/></svg>';
+function injectSeals() { document.querySelectorAll('.seal, .splash-seal').forEach(el => { el.innerHTML = SEAL_SVG; }); }
 (async function boot() {
-  $('app-version').textContent = 'v0.9';
+  $('app-version').textContent = 'v0.10';
+  injectSeals();
   buildBoard(); buildKbd();
   try { await Promise.all([loadDict(), loadSecretas()]); }
   catch (e) { toast('Error cargando datos'); }
